@@ -115,6 +115,7 @@ nav.tabs button[aria-current=page]{color:var(--acc);font-weight:700}
 .radio .ring{width:22px;height:22px;border-radius:50%;border:2px solid #7C858D;flex:none}
 .radio[aria-checked=true] .ring{border:7px solid var(--acc)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b) + 84px);background:var(--acc-soft);color:var(--acc-soft-ink);padding:10px 14px;border-radius:12px;font-size:13px;z-index:30;max-width:90vw;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+#sheet:not(:empty) ~ #toast{bottom:auto;top:calc(var(--safe-t) + 64px)}
 .empty{text-align:center;color:var(--sub);padding:28px 8px;font-size:14px}
 svg text{font-family:-apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif}
 </style>
@@ -128,7 +129,7 @@ svg text{font-family:-apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif
 'use strict';
 /* ========== 定数・ユーティリティ ========== */
 const STORE_KEY = 'haitou-app-v1';
-const TYPES = ['ETF', '投資信託', '国内株', '海外株'];
+const TYPES = ['投資信託', '国内株', '海外株'];
 const TAX = { jp: 20.315, foreign: 28.2835 }; // 海外: 1-(0.9×0.79685)
 const COLORS = ['#3FB68B', '#E0A458', '#5E8FD6', '#E3D27A', '#A98BD6', '#E07A8E', '#6FD0D8', '#C2C9CF'];
 const NOW = new Date();
@@ -168,10 +169,10 @@ const uid = () => 'h' + Math.random().toString(36).slice(2, 9);
 function rng(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 function dummyData() {
   const holdings = [
-    { id: 'h1', name: 'NF日経高配当50', code: '1489', type: 'ETF', qty: 100, cost: 2180, price: 2450, months: { 1: 22, 4: 23, 7: 22, 10: 23 }, taxMode: 'jp', customTax: '' },
+    { id: 'h1', name: 'NF日経高配当50', code: '1489', type: '国内株', qty: 100, cost: 2180, price: 2450, months: { 1: 22, 4: 23, 7: 22, 10: 23 }, taxMode: 'jp', customTax: '' },
     { id: 'h2', name: '三菱商事', code: '8058', type: '国内株', qty: 300, cost: 2650, price: null, months: { 6: 50, 12: 50 }, taxMode: 'jp', customTax: '' },
     { id: 'h3', name: '楽天SCHD', code: '', type: '投資信託', qty: 100000, cost: 10850, price: 11200, months: { 3: 180, 6: 180, 9: 180, 12: 180 }, taxMode: 'jp', customTax: '', account: 'nisa_growth' },
-    { id: 'h4', name: '米国高配当ETF', code: 'VYM', type: 'ETF', qty: 30, cost: 17600, price: null, months: { 3: 130, 6: 135, 9: 125, 12: 140 }, taxMode: 'foreign', customTax: '' },
+    { id: 'h4', name: '米国高配当ETF', code: 'VYM', type: '海外株', qty: 30, cost: 17600, price: null, months: { 3: 130, 6: 135, 9: 125, 12: 140 }, taxMode: 'foreign', customTax: '' },
     { id: 'h5', name: 'コカ・コーラ', code: 'KO', type: '海外株', qty: 50, cost: 9820, price: 10500, months: { 4: 76.5, 7: 76.5, 10: 79.5, 12: 79.5 }, taxMode: 'foreign', customTax: '', account: 'nisa_growth' },
     { id: 'h6', name: 'グローバル好配当ファンド（毎月決算型）', code: '', type: '投資信託', qty: 500000, cost: 9200, price: 8900, months: { 1: 60, 2: 60, 3: 60, 4: 60, 5: 60, 6: 60, 7: 60, 8: 60, 9: 60, 10: 60, 11: 60, 12: 60 }, taxMode: 'jp', customTax: '' },
   ];
@@ -249,6 +250,8 @@ function forwardPer(h) {
   return sum;
 }
 function migrate(db) {
+  // 種別「ETF」は廃止：海外課税なら海外株、それ以外は国内株に振り分け
+  db.holdings.forEach((h) => { if (h.type === 'ETF') h.type = h.taxMode === 'foreign' ? '海外株' : '国内株'; });
   db.loans ||= [];
   db.loans.forEach((L) => { if (!L.history || !L.history.length) L.history = [{ from: 0, amount: L.amount, rate: L.rate, monthly: L.monthly ?? null }]; });
   db.holdings.forEach((h) => {
@@ -536,7 +539,7 @@ function renderHoldings() {
   const loanBalance = (DB.loans || []).filter((L) => !L.endYm || L.endYm >= ym(CUR_Y, CUR_M)).reduce((a, L) => a + (num(L.amount) || 0), 0);
   return `
   <div class="hdr"><h1>銘柄</h1><button class="btn primary row" id="addHolding" style="border-radius:22px">${ic('plus', 16)}追加</button></div>
-  <div class="chips" role="group" aria-label="種別で絞り込み">${['すべて', ...TYPES.filter((x) => x !== 'ETF')].map((t) => `<button class="chip" data-filter="${t}" aria-pressed="${S.filter === t}">${t}</button>`).join('')}</div>
+  <div class="chips" role="group" aria-label="種別で絞り込み">${['すべて', ...TYPES].map((t) => `<button class="chip" data-filter="${t}" aria-pressed="${S.filter === t}">${t}</button>`).join('')}</div>
   <section class="card">
     <div class="row" style="justify-content:space-between;align-items:flex-end">
       <div><div class="small sub">現在の利回り（税引前）</div><div class="num" style="font-size:30px;font-weight:700;color:var(--acc)">${valueTotal > 0 ? (fwdGross / valueTotal * 100).toFixed(2) + '%' : '—'}</div></div>
@@ -793,7 +796,7 @@ function renderAnalysis() {
     if (isNisa(h)) yrs.forEach((yy) => { for (let m = 1; m <= 12; m++) { const a = actualCell(yy, h, m); if (a) nisaSaved += a.gross * (1 - taxRate(h) / 100) * TAX.jp / 100; } });
   });
   const kTotal = kinds.reduce((a, k) => a + k.v, 0), accTotal = accs.reduce((a, k) => a + k.v, 0);
-  const kColors = { 'ETF': '#3FB68B', '投資信託': '#5E8FD6', '国内株': '#E0A458', '海外株': '#A98BD6' };
+  const kColors = { '投資信託': '#5E8FD6', '国内株': '#E0A458', '海外株': '#A98BD6' };
   // 未記入チェック（今年・前月まで）
   const missing = [];
   DB.holdings.forEach((h) => { for (let m = 1; m < CUR_M; m++) if (paysIn(h, CUR_Y, m) && !recOf(CUR_Y, h.id, m)) missing.push({ h, m }); });
@@ -903,6 +906,8 @@ function openEditor(id) {
   renderEditor();
 }
 function renderEditor() {
+  const prevScroll = document.querySelector('#sheet .sheet')?.scrollTop || 0;
+  requestAnimationFrame(() => { const sh = document.querySelector('#sheet .sheet'); if (sh) sh.scrollTop = prevScroll; });
   const d = DRAFT, fund = isFund(d);
   const ms = Object.keys(d.months).map(Number).sort((a, b) => a - b);
   const t = taxRate(d) / 100;
@@ -956,10 +961,23 @@ function renderEditor() {
       })()}
       <div class="fr" style="flex-wrap:wrap;gap:8px;padding:10px 16px">
         <select class="pill num" data-rx="y" aria-label="受取の年" style="height:40px;padding:0 26px 0 10px;background-position:right 8px center">${Array.from({ length: 11 }, (_, i) => CUR_Y - 10 + i).reverse().map((y) => `<option value="${y}" ${(d._rx?.y ?? CUR_Y) == y ? 'selected' : ''}>${y}年</option>`).join('')}</select>
-        <select class="pill num" data-rx="m" aria-label="受取の月" style="height:40px;padding:0 26px 0 10px;background-position:right 8px center">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${(d._rx?.m ?? CUR_M) == i + 1 ? 'selected' : ''}>${i + 1}月</option>`).join('')}</select>
-        <label class="field" style="flex:1 1 120px;min-height:40px"><span class="sub">¥</span><input class="num" inputmode="decimal" enterkeyhint="done" data-rx="amt" value="${d._rx?.amt ?? ''}" placeholder="受取額" aria-label="受取額（税引後）"></label>
-        ${fund ? `<label class="field sp" style="flex:1 1 120px;min-height:40px"><span class="small sub">特別</span><input class="num" inputmode="decimal" enterkeyhint="done" data-rx="sp" value="${d._rx?.sp ?? ''}" placeholder="0" aria-label="特別分配"></label>` : ''}
-        <button class="btn primary" id="recAdd" style="min-height:40px">記録を追加</button>
+        <div style="flex:1 1 100%"><div class="small sub" style="margin-bottom:6px">受け取った月（複数選択できます）</div>
+        <div class="mgrid" role="group" aria-label="受け取った月" style="margin:0">${Array.from({ length: 12 }, (_, k) => k + 1).map((mm) => `<button type="button" class="mbtn num" data-rxm="${mm}" aria-pressed="${(d._rx?.ms || []).includes(mm)}" style="min-height:40px">${mm}月</button>`).join('')}</div></div>
+        ${(() => {
+          const ms = (d._rx?.ms || []).slice().sort((p, q) => p - q), am = d._rx?.amts || {}, sps = d._rx?.sps || {};
+          if (!ms.length) return '<div class="small sub" style="flex:1 1 100%">月を選ぶと、月ごとの受取額の入力欄が出ます。</div>';
+          return `<div style="flex:1 1 100%;display:flex;flex-direction:column;gap:8px">
+            <div class="small sub">月ごとの受取額（税引後）</div>
+            ${ms.map((mm, i) => `<div class="row" style="gap:6px">
+              <span class="num" style="width:36px;flex:none;font-weight:700">${mm}月</span>
+              <label class="field grow" style="min-height:42px"><span class="sub">¥</span><input class="num" inputmode="decimal" enterkeyhint="done" data-rxa="${mm}" value="${am[mm] ?? ''}" placeholder="0" aria-label="${mm}月の受取額（税引後）"></label>
+              ${fund ? `<label class="field sp" style="width:84px;flex:none;min-height:42px;padding:0 8px"><span class="small sub">特別</span><input class="num" inputmode="decimal" enterkeyhint="done" data-rxs="${mm}" value="${sps[mm] ?? ''}" placeholder="0" aria-label="${mm}月の特別分配"></label>` : ''}
+              ${ms.length > 1 && i === 0 ? `<button type="button" class="icon-btn" id="rxCopy" style="width:36px" aria-label="${mm}月の金額を選んだ他の月にコピー">${ic('copy', 18)}</button>` : (ms.length > 1 ? '<span style="width:36px;flex:none"></span>' : '')}
+            </div>`).join('')}
+            ${ms.length > 1 ? '<div class="small sub">右のアイコンで、先頭の月の金額を他の月にコピーできます。</div>' : ''}
+          </div>`;
+        })()}
+        <button class="btn primary" id="recAdd" style="min-height:44px;flex:1 1 100%">記録を追加</button>
       </div>
     </div>
     <div class="hint">配当入力画面で記入した分もここに表示されます。保存すると反映されます。</div>
@@ -1219,12 +1237,25 @@ document.addEventListener('click', (ev) => {
   if (ds.copy) return copyMonth(+ds.copy);
   if (t.id === 'toggleSold') { S.showSold = !S.showSold; return render(); }
   if (t.id === 'recAdd') {
-    const rx = DRAFT._rx || {}; const y = +(rx.y ?? CUR_Y), m = +(rx.m ?? CUR_M);
-    const amt = num(rx.amt), sp = num(rx.sp);
-    if (amt == null && sp == null) { toast('受取額を入力してください'); return; }
-    DRAFT._adds = (DRAFT._adds || []).filter((a) => !(a.y === y && a.m === m)).concat([{ y, m, amount: amt || 0, special: sp || 0 }]);
-    DRAFT._rx = { y, m };
-    renderEditor(); toast(`${y}年${m}月の受取を追加しました（保存で確定）`); return;
+    const rx = DRAFT._rx || {}; const y = +(rx.y ?? CUR_Y), ms = (rx.ms || []).slice().sort((p, q) => p - q);
+    const am = rx.amts || {}, sps = rx.sps || {};
+    if (!ms.length) { toast('受け取った月を選んでください'); return; }
+    const empty = ms.filter((m) => num(am[m]) == null && num(sps[m]) == null);
+    if (empty.length) { toast(`${empty.join('・')}月の受取額を入力してください`); const el = document.querySelector(`[data-rxa="${empty[0]}"]`); if (el) el.focus(); return; }
+    DRAFT._adds = (DRAFT._adds || []).filter((a) => !(a.y === y && ms.includes(a.m))).concat(ms.map((m) => ({ y, m, amount: num(am[m]) || 0, special: num(sps[m]) || 0 })));
+    DRAFT._rx = { y, ms: [] };
+    renderEditor(); toast(`${y}年 ${ms.join('・')}月の受取を追加しました（保存で確定）`); return;
+  }
+  if (ds.rxm) {
+    const mm = +ds.rxm, rx = (DRAFT._rx ||= {}), cur = rx.ms || [];
+    rx.ms = cur.includes(mm) ? cur.filter((x) => x !== mm) : cur.concat([mm]);
+    return renderEditor();
+  }
+  if (t.id === 'rxCopy') {
+    const rx = DRAFT._rx, ms = (rx.ms || []).slice().sort((p, q) => p - q), first = ms[0];
+    rx.amts ||= {}; rx.sps ||= {};
+    ms.slice(1).forEach((m) => { rx.amts[m] = rx.amts[first] ?? ''; rx.sps[m] = rx.sps[first] ?? ''; });
+    renderEditor(); toast(`${first}月の金額を ${ms.slice(1).join('・')}月 にコピーしました`); return;
   }
   if (ds.recdel) {
     const k = ds.recdel; const [y, m] = k.split('-').map(Number);
@@ -1314,6 +1345,8 @@ document.addEventListener('input', (ev) => {
   }
   if (!DRAFT) return;
   if (t.dataset.rx) { (DRAFT._rx ||= {})[t.dataset.rx] = t.value; return; }
+  if (t.dataset.rxa) { ((DRAFT._rx ||= {}).amts ||= {})[t.dataset.rxa] = t.value; return; }
+  if (t.dataset.rxs) { ((DRAFT._rx ||= {}).sps ||= {})[t.dataset.rxs] = t.value; return; }
   if (t.dataset.f) { DRAFT[t.dataset.f] = t.value; if (['qty', 'customTax'].includes(t.dataset.f)) editorRecalc(); }
   if (t.dataset.edamt) { DRAFT.months[t.dataset.edamt] = t.value; t.closest('.field').style.borderColor = t.value === '' ? 'var(--sp)' : ''; editorRecalc(); }
 });
