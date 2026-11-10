@@ -921,8 +921,8 @@ function renderEditor() {
     ${isNisa(d) ? `<div class="hint" style="color:var(--acc-soft-ink)">NISA口座のため国内の税金（20.315%）は免除されます。${d.taxMode === 'foreign' ? '海外株の現地課税10%はNISAでも差し引かれます。' : ''}</div>` : ''}
     <div class="sec">保有状況</div>
     ${seg('edStatus', [['hold', '保有中'], ['sold', '売却済み・過去の銘柄']], d.endYm ? 'sold' : 'hold').replace('class="seg"', 'class="seg" style="display:grid;width:100%"')}
-    ${d.endYm ? '<div class="hint">過去に1〜2回だけ受け取った銘柄は「売却済み」にして、下の「受取の記録」に金額を入れるだけでOKです。配当月の入力は不要です。</div>' : ''}
-    <div class="sec">保有と価格</div>
+    ${d.endYm ? '<div class="hint">過去の銘柄は、保有数量・取得価額・配当月・税率の入力は不要です。下の「受け取った月と金額」に、何月に税引後でいくら受け取ったかだけを入れてください。</div>' : ''}
+    ${d.endYm ? '' : `<div class="sec">保有と価格</div>
     <div class="form">
       ${d.endYm ? `<div class="fr"><span class="grow">保有終了<br><span class="small sub">売却した月</span></span>
         <select class="pill num" data-end="y" aria-label="保有終了の年" style="height:36px;padding:0 26px 0 10px;background-position:right 8px center">${Array.from({ length: 12 }, (_, i) => CUR_Y - 10 + i).map((y) => `<option value="${y}" ${Math.floor(d.endYm / 100) === y ? 'selected' : ''}>${y}年</option>`).join('')}</select>
@@ -947,8 +947,8 @@ function renderEditor() {
       </div>`).join('') : '<div class="empty">上で配当月を選ぶと入力欄が出ます</div>'}
       ${ms.length ? `<div class="fr small"><span class="grow sub">${perLabel(d)}の年間配当 <b class="num" style="color:var(--ink)" id="sumPer">${fmtNum(sumPer)}円</b></span><span class="sub">年間（税引後）</span><b class="num" id="sumNet">${yen(sumNet)}</b></div>` : ''}
     </div>
-    <div class="hint">増配や記念配当で月ごとに違う金額も入れられます。コピーのアイコンでその月の金額を他の配当月へコピーします。${d.id ? '金額を変えて保存すると、いつから適用するかを選べます（過去の配当には影響しません）。' : ''}</div>
-    <div class="sec">受取の記録<span class="small sub">税引後</span></div>
+    <div class="hint">増配や記念配当で月ごとに違う金額も入れられます。コピーのアイコンでその月の金額を他の配当月へコピーします。${d.id ? '金額を変えて保存すると、いつから適用するかを選べます（過去の配当には影響しません）。' : ''}</div>`}
+    <div class="sec">${d.endYm ? '受け取った月と金額' : '受取の記録'}<span class="small sub">税引後</span></div>
     <div class="form">
       ${(() => {
         const list = draftRecs(d);
@@ -963,7 +963,7 @@ function renderEditor() {
       </div>
     </div>
     <div class="hint">配当入力画面で記入した分もここに表示されます。保存すると反映されます。</div>
-    ${d.id && (d.history || []).length ? `<div class="sec">配当額の変更履歴</div>
+    ${d.endYm ? '' : `${d.id && (d.history || []).length ? `<div class="sec">配当額の変更履歴</div>
     <div class="form">${d.history.slice().reverse().map((e, i, arr) => {
       const sum = Object.values(e.months).reduce((a, v) => a + (num(v) || 0), 0);
       const idx = arr.length - 1 - i;
@@ -977,7 +977,7 @@ function renderEditor() {
         <button class="radio" data-tax="${v}" role="radio" aria-checked="${d.taxMode === v}"><i class="ring"></i><span class="grow"><span style="display:block;font-weight:500">${l}</span><span class="small sub">${s2}</span></span><span class="num" style="font-weight:600">${r}</span></button>`).join('')}
       ${d.taxMode === 'custom' ? `<div class="fr" style="background:var(--card2);border-radius:0 0 16px 16px"><span class="grow" style="padding-left:34px">税率を入力</span><label class="field" style="width:120px;min-height:40px"><input class="num" inputmode="decimal" enterkeyhint="done" data-f="customTax" value="${esc(d.customTax)}" placeholder="0" aria-label="税率（％）"><span class="sub">%</span></label></div>` : ''}
     </div>
-    ${fund ? '<div class="hint">投資信託の税率は普通分配にだけかかります。特別分配（元本払戻金）は非課税として計算します。</div>' : ''}
+    ${fund ? '<div class="hint">投資信託の税率は普通分配にだけかかります。特別分配（元本払戻金）は非課税として計算します。</div>' : ''}`}
     ${d.id ? '<button class="btn danger" id="edDelete" style="width:100%;margin-top:24px">この銘柄を削除</button>' : ''}
   </div>`;
 }
@@ -1152,6 +1152,13 @@ document.addEventListener('click', (ev) => {
   if (t.id === 'edSave') {
     const d = DRAFT;
     if (!d.name.trim()) { toast('銘柄名を入力してください'); return; }
+    if (d.endYm) {
+      const recs = draftRecs(d);
+      if (!recs.length) { toast('受け取った月と金額を1件以上追加してください'); return; }
+      // 過去の銘柄は受取の記録だけを持つ（数量・取得価額・配当予定は使わない）
+      d.qty = null; d.cost = null; d.price = null; d.startYm = null; d.months = {}; d.history = [{ from: 0, months: {} }];
+      d.endYm = Math.max(...recs.map((x) => ym(x.y, x.m)));
+    }
     if (!d.endYm && !(num(d.cost) > 0)) {
       toast('平均取得価額を入力してください');
       const row = $('#costRow'); if (row) { row.style.background = 'var(--sp-soft)'; row.scrollIntoView({ block: 'center', behavior: 'smooth' }); row.querySelector('input').focus(); }
