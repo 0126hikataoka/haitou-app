@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1214">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="配当">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>配当管理</title>
+<style>
+:root{
+  --bg:#0F1214;--card:#1A1F23;--card2:#20262A;--raised:#3A4249;--track:#252B30;
+  --ink:#ECEFEA;--sub:#9AA3AB;--line:#262C31;--line2:#343B41;
+  --acc:#3FB68B;--acc-ink:#0F1214;--acc-soft:#173A2E;--acc-soft-ink:#8FE0BF;--fc:#1F4A3B;
+  --sp:#E0A458;--sp-soft:#3D2A12;--sp-ink:#F2C98E;--red:#FF8A80;
+  --safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);color-scheme:dark}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+.num{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select{font:inherit;font-size:16px;color:var(--ink)}
+#app{max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;padding:calc(var(--safe-t) + 16px) 16px calc(var(--safe-b) + 96px)}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 4px 14px}
+.hdr h1{margin:0;font-size:28px;font-weight:700}
+.row{display:flex;align-items:center;gap:8px}
+.card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:12px}
+.card h2{margin:0 0 12px;font-size:16px;font-weight:700}
+.sub{color:var(--sub)}
+.small{font-size:12px}
+.pill{height:40px;padding:0 14px;border:1px solid var(--line2);border-radius:20px;background:var(--card);display:inline-flex;align-items:center;gap:6px;font-weight:600}
+select.pill{appearance:none;-webkit-appearance:none;padding-right:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ECEFEA' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.icon-btn{width:44px;height:44px;border:0;border-radius:12px;background:transparent;color:var(--sub);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--track);border-radius:10px;padding:3px;gap:3px}
+.seg button{min-height:34px;padding:0 10px;border:0;border-radius:8px;background:transparent;font-size:12px;font-weight:500;white-space:nowrap}
+.seg button[aria-checked=true]{background:var(--raised);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.45)}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.switch input{appearance:none;-webkit-appearance:none;width:50px;height:30px;border-radius:15px;background:var(--line2);position:relative;flex:none;margin:0;transition:.2s}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked{background:var(--acc)}
+.switch input:checked::after{left:23px}
+.summary{background:var(--acc);color:var(--acc-ink)}
+.summary .big{font-size:34px;font-weight:700;letter-spacing:-.01em}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.tile{background:rgba(15,18,20,.14);border-radius:12px;padding:8px 10px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--sub)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.sw.fc{background:var(--fc);border:1px dashed var(--acc)}
+.list-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.list-row:first-child{border-top:0}
+.grow{flex:1;min-width:0}
+.ellipsis{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--line2);background:var(--card);font-size:13px}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.hold{display:block;width:100%;text-align:left;border:0;color:inherit}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 8px;margin-top:12px}
+.kv span{display:block}
+.kv .k{font-size:11px;color:var(--sub)}
+.kv .v{font-weight:600}
+.mchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.mchip{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--acc-soft);color:var(--acc)}
+.badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;flex:none}
+.b-act{background:var(--acc-soft);color:var(--acc-soft-ink)}
+.b-exp{background:var(--track);color:var(--sub)}
+.b-sp{background:var(--sp-soft);color:var(--sp-ink)}
+.mgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.mbtn{min-height:44px;border-radius:10px;border:1px solid var(--line2);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-weight:600;font-size:13px}
+.mbtn[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.mbtn .d{width:5px;height:5px;border-radius:50%;background:transparent}
+.mbtn .d.on{background:var(--acc)}
+.mbtn[aria-pressed=true] .d.on{background:var(--acc-ink)}
+.field{display:flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:12px;padding:0 12px;min-height:46px;background:var(--bg)}
+.field input{flex:1;min-width:0;border:0;outline:0;background:transparent;text-align:right;font-weight:600}
+.field.sp{border-color:#6B4A1E}
+.lbl{font-size:12px;color:var(--sub);margin:12px 0 6px;display:block}
+.btn{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line2);background:var(--card);font-weight:600;font-size:14px}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn.ghost{border:0;background:transparent;color:var(--acc)}
+.btn.danger{color:var(--red)}
+.total-bar{background:var(--track);border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:500;color:var(--sub);font-size:11px;text-align:right;padding:8px 4px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:10px 4px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.up{color:var(--acc)}.down{color:var(--red)}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.kpis .card{margin:0;padding:12px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(26,31,35,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 4px calc(var(--safe-b) + 6px);z-index:10}
+nav.tabs button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;color:var(--sub);font-size:11px}
+nav.tabs button[aria-current=page]{color:var(--acc);font-weight:700}
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;padding:calc(var(--safe-t) + 8px) 16px calc(var(--safe-b) + 32px)}
+.sheet-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;position:sticky;top:calc(var(--safe-t) * -1);background:var(--bg);padding:6px 0;z-index:2}
+.sheet-hdr h1{font-size:17px;margin:0}
+.form{background:var(--card);border-radius:16px;margin-bottom:8px}
+.form label.fr,.form .fr{display:flex;align-items:center;gap:10px;padding:0 16px;min-height:54px;border-bottom:1px solid var(--line)}
+.form .fr:last-child{border-bottom:0}
+.form .fr input{width:130px;text-align:right;border:0;outline:0;background:transparent}
+.form .fr input.wide{flex:1;width:auto;text-align:left}
+.sec{font-size:13px;color:var(--sub);margin:18px 4px 8px;display:flex;align-items:center;justify-content:space-between}
+.hint{font-size:12px;color:var(--sub);margin:6px 4px 0;line-height:1.5}
+.radio{display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:56px;border:0;border-bottom:1px solid var(--line);background:transparent;width:100%;text-align:left}
+.radio .ring{width:22px;height:22px;border-radius:50%;border:2px solid #7C858D;flex:none}
+.radio[aria-checked=true] .ring{border:7px solid var(--acc)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b) + 84px);background:var(--acc-soft);color:var(--acc-soft-ink);padding:10px 14px;border-radius:12px;font-size:13px;z-index:30;max-width:90vw;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.empty{text-align:center;color:var(--sub);padding:28px 8px;font-size:14px}
+svg text{font-family:-apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav class="tabs" id="tabs" aria-label="メインメニュー"></nav>
+<div id="sheet"></div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+'use strict';
+/* ========== 定数・ユーティリティ ========== */
+const STORE_KEY = 'haitou-app-v1';
+const TYPES = ['ETF', '投資信託', '国内株', '海外株'];
+const TAX = { jp: 20.315, foreign: 28.2835 }; // 海外: 1-(0.9×0.79685)
+const COLORS = ['#3FB68B', '#E0A458', '#5E8FD6', '#E3D27A', '#A98BD6', '#E07A8E', '#6FD0D8', '#C2C9CF'];
+const NOW = new Date();
+const CUR_Y = NOW.getFullYear();
+const CUR_M = NOW.getMonth() + 1;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (v) => { if (v === '' || v == null) return null; const x = parseFloat(String(v).replace(/[,，¥円\s]/g, '')); return isNaN(x) ? null : x; };
+const yen = (n) => '¥' + Math.round(n || 0).toLocaleString('ja-JP');
+const fmtNum = (n, d = 2) => (n == null ? '' : (Math.round(n * 10 ** d) / 10 ** d).toLocaleString('ja-JP', { maximumFractionDigits: d }));
+function jpShort(n) {
+  n = Math.round(n || 0);
+  if (n >= 100000000) return trim((n / 100000000).toFixed(1)) + '億';
+  if (n >= 10000) return trim((n / 10000).toFixed(n >= 100000 ? 0 : 1)) + '万';
+  if (n >= 1000) return trim((n / 1000).toFixed(1)) + '千';
+  return String(n);
+}
+function trim(s) { return s.replace(/\.0$/, ''); }
+const isFund = (h) => h.type === '投資信託';
+const unitName = (h) => (isFund(h) || h.type === 'ETF' ? '口' : '株');
+const perLabel = (h) => (isFund(h) ? '1万口あたり' : h.type === 'ETF' ? '1口あたり' : '1株あたり');
+const units = (h) => { const q = num(h.qty) || 0; return isFund(h) ? q / 10000 : q; };
+const ACCOUNTS = [['tokutei', '特定口座'], ['nisa_growth', 'NISA成長枠'], ['nisa_tsumitate', 'NISA積立枠']];
+const accLabel = (h) => (ACCOUNTS.find((a) => a[0] === h.account) || ACCOUNTS[0])[1];
+const isNisa = (h) => h.account === 'nisa_growth' || h.account === 'nisa_tsumitate';
+// NISAは国内の税金(20.315%)が免除。海外株の現地課税(10%)は免除されない
+const taxRate = (h) => {
+  if (h.taxMode === 'custom') return num(h.customTax) ?? 0;
+  if (isNisa(h)) return h.taxMode === 'foreign' ? 10 : 0;
+  return TAX[h.taxMode] ?? TAX.jp;
+};
+const taxLabel = (h) => (isNisa(h) ? (h.taxMode === 'jp' ? '非課税 0%' : h.taxMode === 'foreign' ? '外国税 10%' : fmtNum(taxRate(h), 3) + '%')
+  : h.taxMode === 'jp' ? '20.315%' : h.taxMode === 'foreign' ? '海外 28.28%' : fmtNum(taxRate(h), 3) + '%');
+const uid = () => 'h' + Math.random().toString(36).slice(2, 9);
+
+/* ========== ダミーデータ ========== */
+function rng(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+function dummyData() {
+  const holdings = [
+    { id: 'h1', name: 'NF日経高配当50', code: '1489', type: 'ETF', qty: 100, cost: 2180, price: 2450, months: { 1: 22, 4: 23, 7: 22, 10: 23 }, taxMode: 'jp', customTax: '' },
+    { id: 'h2', name: '三菱商事', code: '8058', type: '国内株', qty: 300, cost: 2650, price: null, months: { 6: 50, 12: 50 }, taxMode: 'jp', customTax: '' },
+    { id: 'h3', name: '楽天SCHD', code: '', type: '投資信託', qty: 100000, cost: 10850, price: 11200, months: { 3: 180, 6: 180, 9: 180, 12: 180 }, taxMode: 'jp', customTax: '', account: 'nisa_growth' },
+    { id: 'h4', name: '米国高配当ETF', code: 'VYM', type: 'ETF', qty: 30, cost: 17600, price: null, months: { 3: 130, 6: 135, 9: 125, 12: 140 }, taxMode: 'foreign', customTax: '' },
+    { id: 'h5', name: 'コカ・コーラ', code: 'KO', type: '海外株', qty: 50, cost: 9820, price: 10500, months: { 4: 76.5, 7: 76.5, 10: 79.5, 12: 79.5 }, taxMode: 'foreign', customTax: '', account: 'nisa_growth' },
+    { id: 'h6', name: 'グローバル好配当ファンド（毎月決算型）', code: '', type: '投資信託', qty: 500000, cost: 9200, price: 8900, months: { 1: 60, 2: 60, 3: 60, 4: 60, 5: 60, 6: 60, 7: 60, 8: 60, 9: 60, 10: 60, 11: 60, 12: 60 }, taxMode: 'jp', customTax: '' },
+  ];
+  holdings.forEach((h) => { h.account ||= 'tokutei'; });
+  const r = rng(42);
+  const growth = { [CUR_Y - 3]: 0.62, [CUR_Y - 2]: 0.76, [CUR_Y - 1]: 0.9, [CUR_Y]: 1 };
+  const records = {};
+  for (let y = CUR_Y - 3; y <= CUR_Y; y++) {
+    records[y] = {};
+    holdings.forEach((h) => {
+      if (h.id === 'h6' && y < CUR_Y - 1) return; // 2年前から保有
+      const t = taxRate(h) / 100;
+      Object.entries(h.months).forEach(([m, per]) => {
+        m = +m;
+        if (y === CUR_Y && m >= CUR_M) return;
+        const gross = units(h) * per * growth[y] * (0.94 + r() * 0.12);
+        const rec = {};
+        if (isFund(h)) {
+          let spPer = 0;
+          if (h.id === 'h6') spPer = [0, 0, 10, 20, 30, 40][Math.floor(r() * 6)];
+          const spGross = Math.min(gross, units(h) * spPer);
+          const ord = gross - spGross;
+          rec.basis = 'post'; rec.amount = Math.round(ord * (1 - t)); rec.special = Math.round(spGross);
+        } else if (r() < 0.25) {
+          rec.basis = 'post'; rec.amount = Math.round(gross * (1 - t));
+        } else {
+          rec.basis = 'post'; rec.amount = Math.round(gross * (1 - t));
+        }
+        (records[y][h.id] ||= {})[m] = rec;
+      });
+    });
+  }
+  const ko = holdings.find((h) => h.id === 'h5');
+  ko.history = [{ from: 0, months: { 4: 76.5, 7: 76.5, 10: 76.5, 12: 76.5 } }, { from: ym(CUR_Y, 10), months: { 4: 79.5, 7: 79.5, 10: 79.5, 12: 79.5 } }];
+  ko.months = { ...ko.history[1].months };
+  const db = { v: 1, holdings, records, ui: { includeSpecial: true } };
+  migrate(db);
+  return db;
+}
+
+/* ========== 保存 ========== */
+let DB;
+function load() {
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) { DB = JSON.parse(raw); } } catch (e) { /* 使えない環境 */ }
+  if (!DB) DB = dummyData();
+  migrate(DB);
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } catch (e) { /* 保存不可でも動作は続ける */ } }
+
+/* ========== 計算 ========== */
+function recOf(y, hid, m) { return DB.records[y]?.[hid]?.[m] || null; }
+function setRec(y, hid, m, rec) {
+  DB.records[y] ||= {}; DB.records[y][hid] ||= {};
+  if (rec && rec.rate == null) { const h = DB.holdings.find((x) => x.id === hid); if (h) rec.rate = taxRate(h); }
+  if (rec) DB.records[y][hid][m] = rec; else delete DB.records[y][hid][m];
+  save();
+}
+const ym = (y, m) => y * 100 + m;
+const fromLabel = (f) => (f === 0 ? '最初から' : `${Math.floor(f / 100)}年${f % 100}月から`);
+/** その年月に有効な配当予定（増配・減配の履歴に対応） */
+function scheduleAt(h, y, m) {
+  const hist = h.history && h.history.length ? h.history : [{ from: 0, months: h.months || {} }];
+  let cur = hist[0];
+  for (const e of hist) if (e.from <= ym(y, m)) cur = e;
+  return cur.months || {};
+}
+const paysIn = (h, y, m) => num(scheduleAt(h, y, m)[m]) != null;
+/** 今月から12か月分の予定（1株・1口・1万口あたり） */
+function forwardPer(h) {
+  let sum = 0;
+  for (let k = 0; k < 12; k++) { let m = CUR_M + k, y = CUR_Y; if (m > 12) { m -= 12; y += 1; } sum += num(scheduleAt(h, y, m)[m]) || 0; }
+  return sum;
+}
+function migrate(db) {
+  db.holdings.forEach((h) => {
+    h.account ||= 'tokutei';
+    if (!h.history || !h.history.length) h.history = [{ from: 0, months: { ...(h.months || {}) } }];
+    h.history.sort((a, b) => a.from - b.from);
+  });
+  Object.values(db.records).forEach((yr) => Object.entries(yr).forEach(([hid, ms]) => {
+    const h = db.holdings.find((x) => x.id === hid); if (!h) return;
+    Object.values(ms).forEach((rec) => { if (rec.rate == null) rec.rate = taxRate(h); });
+  }));
+}
+function expectedFor(h, m, y = CUR_Y) {
+  const per = num(scheduleAt(h, y, m)[m]);
+  if (per == null) return null;
+  const gross = units(h) * per;
+  return { gross, net: gross * (1 - taxRate(h) / 100) };
+}
+/** 1銘柄・1か月の値。status: actual | expected | none */
+function cell(y, h, m) {
+  const rec = recOf(y, h.id, m);
+  if (rec && (rec.amount != null || rec.special != null)) {
+    const t = (rec.rate ?? taxRate(h)) / 100; // 記入時の税率で固定
+    const a = num(rec.amount) || 0;
+    const ordGross = rec.basis === 'pre' ? a : (t < 1 ? a / (1 - t) : a);
+    const ordNet = rec.basis === 'pre' ? a * (1 - t) : a;
+    const sp = num(rec.special) || 0; // 特別分配は非課税
+    return { status: 'actual', ordGross, ordNet, sp };
+  }
+  const allowExpected = y >= CUR_Y;
+  const e = expectedFor(h, m, y);
+  if (allowExpected && e) return { status: 'expected', ordGross: e.gross, ordNet: e.net, sp: 0 };
+  return { status: 'none', ordGross: 0, ordNet: 0, sp: 0 };
+}
+function yearSummary(y, opt = {}) {
+  const inc = opt.includeSpecial ?? true, pre = opt.pre ?? false;
+  const months = Array.from({ length: 12 }, () => ({ actOrd: 0, actSp: 0, exp: 0 }));
+  const perHolding = {};
+  let ord = 0, sp = 0, actual = 0, expected = 0, actualSp = 0;
+  DB.holdings.forEach((h) => {
+    perHolding[h.id] = { ord: 0, sp: 0 };
+    for (let m = 1; m <= 12; m++) {
+      const c = cell(y, h, m);
+      const o = pre ? c.ordGross : c.ordNet;
+      if (c.status === 'actual') { months[m - 1].actOrd += o; months[m - 1].actSp += c.sp; actual += o; actualSp += c.sp; }
+      else if (c.status === 'expected') { months[m - 1].exp += o; expected += o; }
+      ord += o; sp += c.sp;
+      perHolding[h.id].ord += o; perHolding[h.id].sp += c.sp;
+    }
+  });
+  const total = ord + (inc ? sp : 0);
+  return { months, perHolding, ord, sp, total, actual: actual + (inc ? actualSp : 0), expected };
+}
+function yearsAvailable() {
+  const ys = Object.keys(DB.records).map(Number).filter((y) => Object.values(DB.records[y] || {}).some((o) => Object.keys(o).length));
+  const min = Math.min(CUR_Y, ...ys);
+  const out = [];
+  for (let y = min; y <= CUR_Y + 1; y++) out.push(y);
+  return out;
+}
+
+/* ========== 状態 ========== */
+const S = { tab: 'home', year: CUR_Y, inputYear: CUR_Y, inputMonth: CUR_M, showAll: false, filter: 'すべて', anaYear: CUR_Y, anaMonth: null };
+
+function askConfirm(msg, okLabel = '削除', danger = true) {
+  return new Promise((resolve) => {
+    const w = document.createElement('div');
+    w.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:flex;align-items:center;justify-content:center;padding:24px';
+    w.innerHTML = `<div role="alertdialog" aria-modal="true" class="card" style="max-width:340px;width:100%;margin:0"><p style="margin:0 0 16px;line-height:1.6">${esc(msg)}</p><div class="row"><button class="btn grow" data-ans="0">キャンセル</button><button class="btn grow ${danger ? 'danger' : 'primary'}" data-ans="1">${esc(okLabel)}</button></div></div>`;
+    w.addEventListener('click', (e) => { const b = e.target.closest('[data-ans]'); if (!b) return; e.stopPropagation(); w.remove(); resolve(b.dataset.ans === '1'); });
+    document.body.appendChild(w);
+  });
+}
+/** 配当額の変更をいつから適用するか。0=すべての期間（入力ミスの訂正） */
+function askEffective() {
+  return new Promise((resolve) => {
+    const w = document.createElement('div');
+    w.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:flex;align-items:center;justify-content:center;padding:20px';
+    const ys = [CUR_Y - 2, CUR_Y - 1, CUR_Y, CUR_Y + 1];
+    w.innerHTML = `<div role="alertdialog" aria-modal="true" aria-label="適用開始の選択" class="card" style="max-width:360px;width:100%;margin:0">
+      <h2>配当額の変更をいつから適用しますか？</h2>
+      <p class="small sub" style="margin:0 0 12px;line-height:1.6">増配・減配は、選んだ月以降の見込み額だけが変わります。それより前の配当には影響しません。</p>
+      <div class="row" style="margin-bottom:14px"><select id="effY" class="pill num grow">${ys.map((y) => `<option value="${y}" ${y === CUR_Y ? 'selected' : ''}>${y}年</option>`).join('')}</select>
+      <select id="effM" class="pill num grow">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${i + 1 === CUR_M ? 'selected' : ''}>${i + 1}月</option>`).join('')}</select><span class="small">から</span></div>
+      <button class="btn primary" data-eff="go" style="width:100%">この月から適用（増配・減配）</button>
+      <button class="btn" data-eff="all" style="width:100%;margin-top:8px">すべての期間を修正（入力ミスの訂正）</button>
+      <button class="btn ghost" data-eff="cancel" style="width:100%;margin-top:4px;color:var(--sub)">キャンセル</button></div>`;
+    w.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-eff]'); if (!b) return; e.stopPropagation();
+      const k = b.dataset.eff;
+      const v = k === 'go' ? ym(+w.querySelector('#effY').value, +w.querySelector('#effM').value) : k === 'all' ? 0 : null;
+      w.remove(); resolve(v);
+    });
+    document.body.appendChild(w);
+  });
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+/* ========== アイコン ========== */
+const I = {
+  home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>',
+  back: '<path d="M15 18l-6-6 6-6"/>',
+};
+const ic = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const colorOf = (h) => COLORS[DB.holdings.indexOf(h) % COLORS.length];
+
+/* ========== 共通部品 ========== */
+function yearSelect(id, value, years) {
+  return `<select class="pill num" id="${id}" aria-label="年を選択">${years.map((y) => `<option value="${y}" ${y === value ? 'selected' : ''}>${y}年</option>`).join('')}</select>`;
+}
+function seg(name, opts, value) {
+  return `<div class="seg" role="radiogroup">${opts.map(([v, l]) => `<button type="button" role="radio" aria-checked="${v === value}" data-seg="${name}" data-v="${v}">${l}</button>`).join('')}</div>`;
+}
+function specialSwitch(id) {
+  return `<label class="switch"><span class="small">特別分配（元本払戻金）を含む</span><input type="checkbox" id="${id}" ${DB.ui.includeSpecial ? 'checked' : ''}></label>`;
+}
+
+/* ========== グラフ ========== */
+function monthBars(ys, inc) {
+  const W = 340, H = 190, top = 22, bottom = 22, left = 4, right = 4;
+  const bw = (W - left - right) / 12;
+  const vals = ys.months.map((m) => m.actOrd + (inc ? m.actSp : 0) + m.exp);
+  const max = Math.max(1, ...vals);
+  const sc = (v) => (v / max) * (H - top - bottom);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="月別の配当グラフ">`;
+  s += `<line x1="0" x2="${W}" y1="${H - bottom}" y2="${H - bottom}" stroke="var(--line2)"/>`;
+  ys.months.forEach((m, i) => {
+    const x = left + i * bw + bw * 0.16, w = bw * 0.68;
+    let y = H - bottom;
+    const seg = (v, fill, extra = '') => { if (v <= 0) return; const h = Math.max(1.5, sc(v)); y -= h; s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${extra}/>`; };
+    seg(m.actOrd, 'var(--acc)');
+    if (inc) seg(m.actSp, 'var(--sp)');
+    seg(m.exp, 'var(--fc)', 'stroke="var(--acc)" stroke-dasharray="3 2" stroke-width="1"');
+    const v = vals[i];
+    if (v > 0) s += `<text x="${x + w / 2}" y="${y - 5}" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--sub)">${jpShort(v)}</text>`;
+    s += `<text x="${x + w / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="${i + 1 === CUR_M && S.year === CUR_Y ? 'var(--ink)' : 'var(--sub)'}">${i + 1}</text>`;
+    s += `<rect x="${left + i * bw}" y="0" width="${bw}" height="${H}" fill="transparent" data-month="${i + 1}" style="cursor:pointer"/>`;
+  });
+  return s + '</svg>';
+}
+function donut(parts, centerLabel, centerValue) {
+  const total = parts.reduce((a, p) => a + p.v, 0);
+  const R = 70, r = 46, C = 90;
+  let s = `<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="銘柄別の比率">`;
+  if (total <= 0) { s += `<circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="var(--line2)" stroke-width="${R - r}"/>`; }
+  else {
+    let a0 = -Math.PI / 2;
+    parts.forEach((p) => {
+      if (p.v <= 0) return;
+      const a1 = a0 + (p.v / total) * Math.PI * 2;
+      if (p.v / total > 0.9999) { s += `<circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="${p.color}" stroke-width="${R - r}"/>`; return; }
+      const large = a1 - a0 > Math.PI ? 1 : 0;
+      const pt = (rad, a) => `${C + rad * Math.cos(a)} ${C + rad * Math.sin(a)}`;
+      s += `<path d="M ${pt(R, a0)} A ${R} ${R} 0 ${large} 1 ${pt(R, a1)} L ${pt(r, a1)} A ${r} ${r} 0 ${large} 0 ${pt(r, a0)} Z" fill="${p.color}" stroke="var(--card)" stroke-width="1.5"/>`;
+      a0 = a1;
+    });
+  }
+  s += `<text x="${C}" y="${C - 4}" text-anchor="middle" font-size="11" fill="var(--sub)">${centerLabel}</text>`;
+  s += `<text x="${C}" y="${C + 16}" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ink)">${centerValue}</text>`;
+  return s + '</svg>';
+}
+/* ========== 画面: ホーム ========== */
+function renderHome() {
+  const inc = DB.ui.includeSpecial;
+  const ys = yearSummary(S.year, { includeSpecial: inc });
+  const hasSp = ys.sp > 0;
+  const parts = DB.holdings.map((h) => ({ h, v: ys.perHolding[h.id].ord + (inc ? ys.perHolding[h.id].sp : 0), color: colorOf(h) }))
+    .filter((p) => p.v > 0).sort((a, b) => b.v - a.v);
+  const total = parts.reduce((a, p) => a + p.v, 0);
+  const isCur = S.year === CUR_Y, isPast = S.year < CUR_Y;
+  return `
+  <div class="hdr"><h1>配当</h1><div class="row">${yearSelect('homeYear', S.year, yearsAvailable())}<button class="icon-btn" id="openSettings" aria-label="設定">${ic('gear')}</button></div></div>
+  <section class="card summary">
+    <div class="small" style="opacity:.85">${S.year}年の受取額（税引後${isPast ? '' : '・見込み含む'}${inc ? '' : '・特別分配除く'}）</div>
+    <div class="big num">${yen(ys.total)}</div>
+    <div class="tiles">
+      <div class="tile"><div class="small" style="opacity:.85">受取済（記入済み）</div><div class="num" style="font-weight:700;font-size:18px">${yen(ys.actual)}</div></div>
+      <div class="tile"><div class="small" style="opacity:.85">${isPast ? '未記入' : '見込み（未記入分）'}</div><div class="num" style="font-weight:700;font-size:18px">${isPast ? '—' : yen(ys.expected)}</div></div>
+    </div>
+    ${hasSp ? `<div class="small" style="margin-top:10px;opacity:.9">うち特別分配 ${yen(ys.sp)}・普通分配/配当 ${yen(ys.ord)}</div>` : ''}
+  </section>
+  <section class="card">
+    <h2>月別の配当</h2>
+    <div class="legend" style="margin-bottom:6px"><span><i class="sw" style="background:var(--acc)"></i>受取済</span>${inc ? '<span><i class="sw" style="background:var(--sp)"></i>特別分配</span>' : ''}<span><i class="sw fc"></i>見込み</span></div>
+    ${monthBars(ys, inc)}
+    ${specialSwitch('homeSp')}
+    <div class="small sub">税引後・円。バーをタップするとその月の入力画面へ。</div>
+  </section>
+  <section class="card">
+    <h2>銘柄別の比率</h2>
+    <div style="display:flex;justify-content:center">${donut(parts.map((p) => ({ v: p.v, color: p.color })), '年間合計', jpShort(total) + '円')}</div>
+    <div style="margin-top:8px">${parts.length ? parts.map((p) => `
+      <div class="list-row"><i class="sw" style="background:${p.color};width:12px;height:12px;margin:0"></i>
+      <span class="grow ellipsis">${esc(p.h.name)}</span>
+      <span class="num" style="font-weight:600;width:54px;text-align:right">${(p.v / total * 100).toFixed(1)}%</span>
+      <span class="num sub" style="width:76px;text-align:right;font-size:13px">${yen(p.v)}</span></div>`).join('') : '<div class="empty">この年の配当データはまだありません</div>'}</div>
+  </section>`;
+}
+
+/* ========== 画面: 銘柄一覧 ========== */
+function renderHoldings() {
+  const list = DB.holdings.filter((h) => S.filter === 'すべて' || h.type === S.filter);
+  const costTotal = list.reduce((a, h) => a + units(h) * (num(h.cost) || 0), 0);
+  const noPrice = list.filter((h) => num(h.price) == null).length;
+  const valueTotal = list.reduce((a, h) => a + units(h) * (num(h.price) ?? num(h.cost) ?? 0), 0);
+  const fwdGross = list.reduce((a, h) => a + units(h) * forwardPer(h), 0);
+  const fwdNet = list.reduce((a, h) => a + units(h) * forwardPer(h) * (1 - taxRate(h) / 100), 0);
+  const pl = valueTotal - costTotal;
+  return `
+  <div class="hdr"><h1>銘柄</h1><button class="btn primary row" id="addHolding" style="border-radius:22px">${ic('plus', 16)}追加</button></div>
+  <div class="chips" role="group" aria-label="種別で絞り込み">${['すべて', ...TYPES.filter((x) => x !== 'ETF')].map((t) => `<button class="chip" data-filter="${t}" aria-pressed="${S.filter === t}">${t}</button>`).join('')}</div>
+  <section class="card">
+    <div class="row" style="justify-content:space-between;align-items:flex-end">
+      <div><div class="small sub">現在の利回り（税引前）</div><div class="num" style="font-size:30px;font-weight:700;color:var(--acc)">${valueTotal > 0 ? (fwdGross / valueTotal * 100).toFixed(2) + '%' : '—'}</div></div>
+      <div style="text-align:right"><div class="small sub">取得利回り</div><div class="num" style="font-size:18px;font-weight:700">${costTotal > 0 ? (fwdGross / costTotal * 100).toFixed(2) + '%' : '—'}</div></div>
+    </div>
+    <div class="kv" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <div><span class="k">評価額合計</span><span class="v num">${yen(valueTotal)}</span></div>
+      <div><span class="k">取得額合計</span><span class="v num">${yen(costTotal)}</span></div>
+      <div><span class="k">予想年間配当（税引後）</span><span class="v num">${yen(fwdNet)}</span></div>
+      <div><span class="k">評価損益</span><span class="v num ${pl >= 0 ? 'up' : 'down'}">${(pl >= 0 ? '+' : '−') + yen(Math.abs(pl))}</span></div>
+    </div>
+    <div class="hint" style="margin:10px 0 0">${list.length}銘柄の合計。予想年間配当は今月から12か月分の配当予定で計算。${noPrice ? `現在値が未入力の${noPrice}銘柄は平均取得価額で計算しています。` : ''}</div>
+  </section>
+  ${list.length ? list.map((h) => {
+    const per = forwardPer(h);
+    const cost = num(h.cost), price = num(h.price);
+    const pl = cost != null && price != null ? units(h) * (price - cost) : null;
+    return `<button class="card hold" data-edit="${h.id}">
+      <div class="row"><i style="width:10px;height:36px;border-radius:5px;background:${colorOf(h)};flex:none"></i>
+        <div class="grow"><div class="ellipsis" style="font-weight:700">${esc(h.name)}</div>
+        <div class="small sub"><span class="badge ${isNisa(h) ? 'b-act' : 'b-exp'}" style="padding:1px 6px;margin-right:4px">${accLabel(h)}</span>${esc(h.code || '—')} · ${h.type} · ${isFund(h) ? '保有口数 ' : ''}${(h.qty || 0).toLocaleString('ja-JP')}${unitName(h)}</div></div>
+        <span class="sub">${ic('chev', 18)}</span></div>
+      <div class="kv">
+        <div><span class="k">取得価額${isFund(h) ? '/1万口' : ''}</span><span class="v num">${cost != null ? yen(cost) : '未入力'}</span></div>
+        <div><span class="k">現在値</span><span class="v num" style="${price == null ? 'color:var(--sub)' : ''}">${price != null ? yen(price) : '未入力'}</span></div>
+        <div><span class="k">取得利回り</span><span class="v num">${cost ? (per / cost * 100).toFixed(2) + '%' : '—'}</span></div>
+        <div><span class="k">年間配当（税引後）</span><span class="v num">${yen(units(h) * per * (1 - taxRate(h) / 100))}</span></div>
+        <div><span class="k">税率</span><span class="v num">${taxLabel(h)}</span></div>
+        <div><span class="k">評価損益</span><span class="v num ${pl == null ? '' : pl >= 0 ? 'up' : 'down'}">${pl == null ? '—' : (pl >= 0 ? '+' : '−') + yen(Math.abs(pl))}</span></div>
+      </div>
+      <div class="mchips">${(h.history || []).length > 1 ? `<span class="mchip" style="background:var(--sp-soft);color:var(--sp-ink)">配当変更 ${h.history.length - 1}回</span>` : ''}${Object.keys(h.months || {}).map(Number).sort((a, b) => a - b).map((m) => `<span class="mchip">${m}月</span>`).join('')}</div>
+    </button>`;
+  }).join('') : '<div class="card empty">銘柄がありません。「追加」から登録してください。</div>'}`;
+}
+
+/* ========== 画面: 配当入力 ========== */
+function renderInput() {
+  const y = S.inputYear, m = S.inputMonth;
+  const scheduled = DB.holdings.filter((h) => paysIn(h, y, m) || recOf(y, h.id, m));
+  const list = S.showAll ? DB.holdings : scheduled;
+  let monthNet = 0, monthSp = 0;
+  const cards = list.map((h) => {
+    const c = cell(y, h, m), e = expectedFor(h, m, y), rec = recOf(y, h.id, m);
+    if (c.status !== 'none') { monthNet += c.ordNet; monthSp += c.sp; }
+    const fund = isFund(h);
+    const badge = c.status === 'actual' ? '<span class="badge b-act">受取済</span>' : (e ? '<span class="badge b-exp">未記入</span>' : '<span class="badge b-exp">予定なし</span>');
+    const diff = c.status === 'actual' && e ? c.ordNet + c.sp - e.net : null;
+    return `<section class="card" data-hid="${h.id}">
+      <div class="row" style="margin-bottom:8px"><i class="sw" style="background:${colorOf(h)};margin:0"></i><span class="grow ellipsis" style="font-weight:700">${esc(h.name)}</span>${c.sp > 0 ? '<span class="badge b-sp">特別分配あり</span>' : ''}${badge}</div>
+      <div class="row small sub" style="justify-content:space-between"><span>見込み（自動計算・税引後）</span><span class="num">${e ? yen(e.net) : '—'}</span></div>
+      <span class="lbl">${fund ? '普通分配（税引後）' : '実際の受取額（税引後）'}</span>
+      <div class="row">
+        <label class="field grow"><span class="sub">¥</span><input class="num" inputmode="decimal" data-rec="amount" value="${c.status === 'actual' && rec?.amount != null ? Math.round(c.ordNet) : ''}" placeholder="${e ? Math.round(e.net).toLocaleString('ja-JP') : '0'}" aria-label="${esc(h.name)}の${fund ? '普通分配' : '受取額'}"></label>
+      </div>
+      ${fund ? `<span class="lbl">特別分配（元本払戻金・非課税）</span>
+      <label class="field sp"><span class="sub">¥</span><input class="num" inputmode="decimal" data-rec="special" value="${rec?.special ?? ''}" placeholder="0" aria-label="${esc(h.name)}の特別分配"></label>` : ''}
+      <div class="row small" style="justify-content:space-between;margin-top:10px;min-height:32px">
+        <span class="sub">${c.status === 'actual' ? `税引後 ${yen(c.ordNet)}${fund ? ` ＋ 特別 ${yen(c.sp)}` : ''}${diff != null ? `（見込み比 ${diff >= 0 ? '+' : '−'}${yen(Math.abs(diff))}）` : ''}` : '金額を入れると受取済になります'}</span>
+        <span class="row" style="gap:0">${e && c.status !== 'actual' ? `<button class="btn ghost" data-fill="${h.id}" style="min-height:32px;padding:0 6px;font-size:12px">見込み額で記入</button>` : ''}${c.status === 'actual' ? `<button class="btn ghost" data-clear="${h.id}" style="min-height:32px;padding:0 6px;font-size:12px;color:var(--sub)">クリア</button>` : ''}</span>
+      </div>
+    </section>`;
+  }).join('');
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const pays = (mm) => DB.holdings.some((h) => paysIn(h, y, mm) || recOf(y, h.id, mm));
+  const done = (mm) => DB.holdings.some((h) => recOf(y, h.id, mm));
+  return `
+  <div class="hdr"><h1>配当入力</h1>${yearSelect('inputYear', y, yearsAvailable())}</div>
+  <div class="mgrid" role="tablist" aria-label="月">${months.map((mm) => `<button class="mbtn num" role="tab" data-month="${mm}" aria-pressed="${mm === m}">${mm}月<i class="d ${pays(mm) ? 'on' : ''}" style="${done(mm) && mm !== m ? 'background:var(--acc)' : ''}"></i></button>`).join('')}</div>
+  <div class="row" style="justify-content:space-between;margin:0 4px 10px"><h2 style="margin:0;font-size:18px">${y}年${m}月</h2>
+    <label class="row small sub"><input type="checkbox" id="showAll" ${S.showAll ? 'checked' : ''} style="width:18px;height:18px">予定外の銘柄も表示</label></div>
+  ${cards || '<div class="card empty">この月に配当予定の銘柄はありません</div>'}
+  <div class="total-bar"><span>${m}月の合計（税引後）</span><span class="num" style="font-weight:700;font-size:20px">${yen(monthNet + monthSp)}</span></div>
+  ${monthSp > 0 ? `<div class="hint">うち特別分配 ${yen(monthSp)}</div>` : ''}`;
+}
+
+/* ========== 画面: 分析（実際に受け取った金額のみ・税引後） ========== */
+/** 記入済み（受取済）の金額だけを返す */
+function actualCell(y, h, m) {
+  const c = cell(y, h, m);
+  return c.status === 'actual' ? { ord: c.ordNet, sp: c.sp, gross: c.ordGross } : null;
+}
+function actualYear(y, inc) {
+  const months = Array.from({ length: 12 }, () => 0);
+  const per = {};
+  let ord = 0, sp = 0, count = 0;
+  DB.holdings.forEach((h) => {
+    per[h.id] = { ord: 0, sp: 0 };
+    for (let m = 1; m <= 12; m++) {
+      const a = actualCell(y, h, m); if (!a) continue;
+      ord += a.ord; sp += a.sp; count++;
+      per[h.id].ord += a.ord; per[h.id].sp += a.sp;
+      months[m - 1] += a.ord + (inc ? a.sp : 0);
+    }
+  });
+  return { y, ord, sp, total: ord + (inc ? sp : 0), months, per, count };
+}
+function sumMonths(ay, upto) { return ay.months.slice(0, upto).reduce((a, v) => a + v, 0); }
+function actualYearsList(inc) {
+  const ys = Object.keys(DB.records).map(Number).filter((y) => y <= CUR_Y).sort((a, b) => a - b);
+  if (!ys.includes(CUR_Y)) ys.push(CUR_Y);
+  return ys.map((y) => actualYear(y, inc)).filter((r) => r.count > 0 || r.y === CUR_Y);
+}
+function yearBars(rows, inc, sel) {
+  const W = 340, H = 200, top = 22, bottom = 22;
+  const bw = W / Math.max(rows.length, 1);
+  const max = Math.max(1, ...rows.map((r) => r.total));
+  const sc = (v) => (v / max) * (H - top - bottom);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="年間受取額の推移">`;
+  s += `<line x1="0" x2="${W}" y1="${H - bottom}" y2="${H - bottom}" stroke="var(--line2)"/>`;
+  rows.forEach((r, i) => {
+    const w = Math.min(44, bw * 0.6), x = i * bw + (bw - w) / 2;
+    let y = H - bottom;
+    const on = r.y === sel, op = sel === 'all' || on ? 1 : 0.45;
+    const seg = (v, fill) => { if (v <= 0) return; const h = Math.max(1.5, sc(v)); y -= h; s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" opacity="${op}"/>`; };
+    seg(r.ord, 'var(--acc)');
+    if (inc) seg(r.sp, 'var(--sp)');
+    if (r.total > 0) s += `<text x="${x + w / 2}" y="${y - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)" opacity="${on ? 1 : 0.7}">${jpShort(r.total)}</text>`;
+    s += `<text x="${x + w / 2}" y="${H - 6}" text-anchor="middle" font-size="11" font-weight="${on ? 700 : 400}" fill="${on ? 'var(--ink)' : 'var(--sub)'}">${r.y}${r.y === CUR_Y ? '*' : ''}</text>`;
+    s += `<rect x="${i * bw}" y="0" width="${bw}" height="${H}" fill="transparent" data-anayear="${r.y}" style="cursor:pointer"/>`;
+  });
+  return s + '</svg>';
+}
+function compareBars(cur, prev) {
+  const W = 340, H = 170, top = 18, bottom = 22, bw = W / 12;
+  const max = Math.max(1, ...cur.months, ...(prev ? prev.months : []));
+  const sc = (v) => (v / max) * (H - top - bottom);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="月別の前年比較">`;
+  s += `<line x1="0" x2="${W}" y1="${H - bottom}" y2="${H - bottom}" stroke="var(--line2)"/>`;
+  for (let i = 0; i < 12; i++) {
+    const w = bw * 0.34, x0 = i * bw + bw * 0.14;
+    const p = prev ? prev.months[i] : 0, c = cur.months[i];
+    if (p > 0) s += `<rect x="${x0}" y="${H - bottom - sc(p)}" width="${w}" height="${Math.max(1.5, sc(p))}" fill="var(--line2)"/>`;
+    if (c > 0) s += `<rect x="${x0 + w + 2}" y="${H - bottom - sc(c)}" width="${w}" height="${Math.max(1.5, sc(c))}" fill="var(--acc)"/>`;
+    s += `<text x="${i * bw + bw / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--sub)">${i + 1}</text>`;
+  }
+  return s + '</svg>';
+}
+function comboChart(rows, sel) {
+  const W = 340, H = 210, top = 22, bottom = 22, left = 34, right = 4;
+  const iw = W - left - right, bw = iw / 12;
+  const maxB = Math.max(1, ...rows.map((r) => r.v));
+  let cum = 0; const cums = rows.map((r) => (cum += r.v));
+  const lastIdx = rows.reduce((a, r, i) => (r.future ? a : i), -1);
+  const maxL = Math.max(1, cum);
+  const yB = (v) => H - bottom - (v / maxB) * (H - top - bottom);
+  const yL = (v) => H - bottom - (v / maxL) * (H - top - bottom);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="月別受取額のグラフ">`;
+  [0, 0.5, 1].forEach((f) => {
+    const y = H - bottom - f * (H - top - bottom);
+    s += `<line x1="${left}" x2="${W - right}" y1="${y}" y2="${y}" stroke="var(--line)" ${f ? 'stroke-dasharray="2 3"' : ''}/>`;
+    s += `<text x="${left - 4}" y="${y + 3}" text-anchor="end" font-size="9" fill="var(--sub)">${jpShort(maxB * f)}</text>`;
+  });
+  rows.forEach((r, i) => {
+    const x = left + i * bw + bw * 0.18, w = bw * 0.64, on = sel === r.m;
+    if (r.v > 0) {
+      s += `<rect x="${x}" y="${yB(r.v)}" width="${w}" height="${Math.max(1.5, H - bottom - yB(r.v))}" rx="2" fill="var(--acc)" opacity="${sel && !on ? 0.4 : 1}"/>`;
+      s += `<text x="${x + w / 2}" y="${yB(r.v) - 5}" text-anchor="middle" font-size="9" font-weight="600" fill="${on ? 'var(--ink)' : 'var(--sub)'}">${jpShort(r.v)}</text>`;
+    }
+    s += `<text x="${x + w / 2}" y="${H - 6}" text-anchor="middle" font-size="10.5" font-weight="${on ? 700 : 400}" fill="${on ? 'var(--ink)' : 'var(--sub)'}">${r.m}</text>`;
+  });
+  rows.forEach((r, i) => { s += `<rect x="${left + i * bw}" y="0" width="${bw}" height="${H}" fill="transparent" data-anamonth="${r.m}" style="cursor:pointer"><title>${r.m}月 ${yen(r.v)}</title></rect>`; });
+  return s + '</svg>';
+}
+function renderAnalysis() {
+  const inc = DB.ui.includeSpecial;
+  const rows = actualYearsList(inc);
+  rows.forEach((r, i) => { const p = rows[i - 1]; r.yoy = p && p.total > 0 && r.y !== CUR_Y ? (r.total / p.total - 1) * 100 : null; });
+  const cur = rows.find((r) => r.y === CUR_Y) || actualYear(CUR_Y, inc);
+  const prev = rows.find((r) => r.y === CUR_Y - 1);
+  const elapsed = CUR_M - 1; // 今月はまだ途中なので前月までで比較
+  const ytd = sumMonths(cur, 12);
+  const prevYtd = prev ? sumMonths(prev, Math.max(elapsed, 1)) : 0;
+  const ytdCmp = prev && prevYtd > 0 ? (sumMonths(cur, Math.max(elapsed, 1)) / prevYtd - 1) * 100 : null;
+  // 直近12か月
+  let ttm = 0;
+  for (let k = 1; k <= 12; k++) {
+    let y = CUR_Y, m = CUR_M - k; if (m <= 0) { m += 12; y -= 1; }
+    const ay = rows.find((r) => r.y === y); if (ay) ttm += ay.months[m - 1];
+  }
+  const costTotal = DB.holdings.reduce((a, h) => a + units(h) * (num(h.cost) || 0), 0);
+  const cumulative = rows.reduce((a, r) => a + r.total, 0);
+  const full = rows.filter((r) => r.y < CUR_Y && r.total > 0);
+  const cagr = full.length >= 2 ? (Math.pow(full[full.length - 1].total / full[0].total, 1 / (full[full.length - 1].y - full[0].y)) - 1) * 100 : null;
+  // 今年の見込み（参考）
+  const forecast = yearSummary(CUR_Y, { includeSpecial: inc }).total;
+
+  const years = rows.map((r) => r.y);
+  if (S.anaYear !== 'all' && !years.includes(S.anaYear)) S.anaYear = CUR_Y;
+  const ay = S.anaYear, isAll = ay === 'all';
+  const yrs = isAll ? years : [ay];
+  const label = isAll ? '全期間' : ay + '年';
+  let A;
+  if (isAll) {
+    A = { y: 'all', ord: 0, sp: 0, total: 0, months: Array(12).fill(0), per: {}, count: 0 };
+    DB.holdings.forEach((h) => { A.per[h.id] = { ord: 0, sp: 0 }; });
+    rows.forEach((r) => {
+      A.ord += r.ord; A.sp += r.sp; A.total += r.total; A.count += r.count;
+      r.months.forEach((v, i) => { A.months[i] += v; });
+      Object.entries(r.per).forEach(([id, p]) => { if (A.per[id]) { A.per[id].ord += p.ord; A.per[id].sp += p.sp; } });
+    });
+  } else A = rows.find((r) => r.y === ay) || actualYear(ay, inc);
+  const P = isAll ? null : rows.find((r) => r.y === ay - 1) || null;
+  const aTotal = A.total;
+  // 銘柄ランキング
+  const rank = DB.holdings.map((h) => {
+    const v = A.per[h.id].ord + (inc ? A.per[h.id].sp : 0);
+    let pv = 0;
+    if (P) { const upto = ay === CUR_Y ? CUR_M - 1 : 12; for (let m = 1; m <= upto; m++) { const c = actualCell(ay - 1, h, m); if (c) pv += c.ord + (inc ? c.sp : 0); } }
+    const cost = units(h) * (num(h.cost) || 0);
+    const yrsHeld = rows.filter((r) => (r.per[h.id]?.ord || 0) + (r.per[h.id]?.sp || 0) > 0).length;
+    return { h, v, pv, yrsHeld, chg: pv > 0 ? (v / pv - 1) * 100 : null, yoc: cost > 0 ? A.per[h.id].ord / cost * 100 : null };
+  }).filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
+  // 口座・種別・投信
+  const kinds = TYPES.map((t) => ({ t, v: 0 }));
+  const accs = ACCOUNTS.map(([k, l]) => ({ k, l, v: 0 }));
+  const funds = [];
+  let nisaSaved = 0;
+  DB.holdings.forEach((h) => {
+    const o = A.per[h.id].ord, sp = A.per[h.id].sp;
+    kinds[TYPES.indexOf(h.type)].v += o + (inc ? sp : 0);
+    (accs.find((a) => a.k === h.account) || accs[0]).v += o + (inc ? sp : 0);
+    if (isFund(h) && o + sp > 0) funds.push({ h, o, sp });
+    if (isNisa(h)) yrs.forEach((yy) => { for (let m = 1; m <= 12; m++) { const a = actualCell(yy, h, m); if (a) nisaSaved += a.gross * (1 - taxRate(h) / 100) * TAX.jp / 100; } });
+  });
+  const kTotal = kinds.reduce((a, k) => a + k.v, 0), accTotal = accs.reduce((a, k) => a + k.v, 0);
+  const kColors = { 'ETF': '#3FB68B', '投資信託': '#5E8FD6', '国内株': '#E0A458', '海外株': '#A98BD6' };
+  // 未記入チェック（今年・前月まで）
+  const missing = [];
+  DB.holdings.forEach((h) => { for (let m = 1; m < CUR_M; m++) if (paysIn(h, CUR_Y, m) && !recOf(CUR_Y, h.id, m)) missing.push({ h, m }); });
+  missing.sort((a, b) => a.m - b.m);
+
+  const mMax = Math.max(1, ...A.months);
+  const monthRows = A.months.map((v, i) => {
+    const m = i + 1;
+    const items = DB.holdings.map((h) => {
+      let v = 0, sp = 0, hit = false;
+      yrs.forEach((yy) => { const a = actualCell(yy, h, m); if (a) { hit = true; v += a.ord + (inc ? a.sp : 0); sp += a.sp; } });
+      return hit ? { h, v, sp } : null;
+    }).filter(Boolean).sort((a, b) => b.v - a.v);
+    const byYear = isAll ? rows.map((r) => ({ y: r.y, v: r.months[i] })).filter((o) => o.v > 0) : [];
+    return { m, v, pv: P ? P.months[i] : 0, items, byYear, future: !isAll && ay === CUR_Y && m >= CUR_M && v === 0 };
+  });
+  const fmtPct = (v) => (v == null ? '<span class="sub">—</span>' : `<span class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%</span>`);
+  const kpi = (label, value, note = '') => `<div class="card"><div class="small sub">${label}</div><div class="num" style="font-weight:700;font-size:17px;margin-top:2px">${value}</div>${note ? `<div class="sub" style="font-size:10px;margin-top:2px">${note}</div>` : ''}</div>`;
+  return `
+  <div class="hdr"><h1>分析</h1><span class="small sub">受取済・税引後</span></div>
+  <div class="kpis">
+    ${kpi(`${CUR_Y}年の受取額`, jpShort(ytd) + '円', `見込み ${jpShort(forecast)}円`)}
+    ${kpi('前年同期比', fmtPct(ytdCmp), `1〜${Math.max(elapsed, 1)}月で比較`)}
+    ${kpi('累計受取額', jpShort(cumulative) + '円', `${rows[0]?.y ?? CUR_Y}年〜`)}
+    ${kpi('直近12か月', jpShort(ttm) + '円', `月平均 ${jpShort(ttm / 12)}円`)}
+    ${kpi('実績利回り', costTotal > 0 ? (ttm / costTotal * 100).toFixed(2) + '%' : '—', '直近12か月 ÷ 取得額')}
+    ${kpi('年平均成長率', cagr == null ? '—' : cagr.toFixed(1) + '%', full.length >= 2 ? `${full[0].y}〜${full[full.length - 1].y}年` : '2年分以上で表示')}
+  </div>
+  ${missing.length ? `<section class="card" style="border:1px solid #6B4A1E">
+    <h2 style="color:var(--sp-ink)">未記入の配当が${missing.length}件あります</h2>
+    <div class="small sub" style="margin:-6px 0 8px">予定があるのに${CUR_Y}年の受取額が未記入の月です。</div>
+    ${missing.slice(0, 6).map((x) => `<button class="list-row hold" data-goinput="${x.m}" style="background:transparent;padding:8px 0"><span class="num" style="width:36px;font-weight:700">${x.m}月</span><span class="grow ellipsis">${esc(x.h.name)}</span><span class="small" style="color:var(--acc)">記入する</span></button>`).join('')}
+    ${missing.length > 6 ? `<div class="small sub" style="padding-top:6px">ほか${missing.length - 6}件</div>` : ''}
+  </section>` : ''}
+  <section class="card">
+    <h2>年間受取額の推移</h2>
+    <div class="legend" style="margin-bottom:6px"><span><i class="sw" style="background:var(--acc)"></i>配当・普通分配</span>${inc ? '<span><i class="sw" style="background:var(--sp)"></i>特別分配</span>' : ''}<span>* ${CUR_Y}年は途中</span></div>
+    ${yearBars(rows, inc, ay)}
+    <div class="small sub" style="margin-top:4px">棒や表の年を押すと、その年の月別の受取額を表示します。</div>
+    ${specialSwitch('anaSp')}
+  </section>
+  <section class="card" style="padding:8px 12px">
+    <table><thead><tr><th>年</th><th>配当・普通</th><th>特別分配</th><th>合計</th><th>前年比</th></tr></thead>
+    <tbody>${rows.slice().reverse().map((r) => `<tr data-anayear="${r.y}" style="cursor:pointer;${r.y === ay ? 'background:var(--acc-soft)' : ''}"><td class="num" style="font-weight:600"><button type="button" data-anayear="${r.y}" style="border:0;background:transparent;padding:0;font-weight:700;color:${r.y === ay ? 'var(--acc-soft-ink)' : 'var(--ink)'};text-decoration:underline;text-underline-offset:3px">${r.y}${r.y === CUR_Y ? '*' : ''}</button></td><td>${jpShort(r.ord)}</td><td style="color:var(--sp-ink)">${r.sp ? jpShort(r.sp) : '—'}</td><td style="font-weight:700">${jpShort(r.total)}</td><td>${r.y === CUR_Y ? `<span class="small sub">同期</span> ${fmtPct(ytdCmp)}` : fmtPct(r.yoy)}</td></tr>`).join('')}</tbody></table>
+    <div class="hint" style="padding-bottom:6px">記入済みの受取額だけを集計（税引後・千・万表記）。${CUR_Y}年の前年比は前年の同じ期間と比較。</div>
+  </section>
+  <div class="row" id="anaDetail" style="justify-content:space-between;margin:18px 4px 10px;scroll-margin-top:12px"><h2 style="margin:0;font-size:16px">詳細</h2><select class="pill num" id="anaYear" aria-label="期間を選択"><option value="all" ${isAll ? 'selected' : ''}>全期間</option>${years.slice().reverse().map((y) => `<option value="${y}" ${y === ay ? 'selected' : ''}>${y}年</option>`).join('')}</select></div>
+  <section class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">${isAll ? `全期間の月別受取額<span class="small sub" style="font-weight:400">（${years[0]}〜${years[years.length - 1]}年の合計）</span>` : label + 'の月別受取額'}</h2><span class="num" style="font-weight:700">${yen(A.total)}</span></div>
+    ${comboChart(monthRows, S.anaMonth)}
+    ${(() => {
+      const x = monthRows.find((r) => r.m === S.anaMonth);
+      if (!x) return '<div class="hint" style="margin:6px 0 0">棒を押すと、その月の銘柄ごとの内訳を表示します。</div>';
+      return `<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:10px">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px"><b>${isAll ? x.m + '月（全期間の合計）' : label + x.m + '月'}</b><span><span class="num" style="font-weight:700">${x.v > 0 ? yen(x.v) : '—'}</span>${x.pv > 0 && x.v > 0 ? ` <span class="small">${fmtPct((x.v / x.pv - 1) * 100)}</span>` : ''}</span></div>
+        ${x.items.length ? x.items.map((it) => `<div class="row small" style="min-height:30px"><i class="sw" style="background:${colorOf(it.h)};margin:0"></i><span class="grow ellipsis">${esc(it.h.name)}</span>${it.sp > 0 ? `<span style="color:var(--sp-ink)">特別 ${yen(it.sp)}</span>` : ''}<span class="num" style="font-weight:600;width:70px;text-align:right">${yen(it.v)}</span></div>`).join('') : `<div class="small sub">${x.future ? 'まだ受け取っていない月です' : 'この月の受取記録はありません'}</div>`}
+        ${P ? `<div class="small sub" style="margin-top:4px">${ay - 1}年${x.m}月：${yen(x.pv)}</div>` : ''}
+        ${isAll && x.byYear.length ? `<div class="small sub" style="margin-top:6px">年ごと：${x.byYear.map((o) => `${o.y}年 ${yen(o.v)}`).join('・')}</div>` : ''}
+      </div>`;
+    })()}
+  </section>
+  ${isAll ? '' : `<section class="card">
+    <h2>月別の前年比較</h2>
+    <div class="legend" style="margin-bottom:6px"><span><i class="sw" style="background:var(--line2)"></i>${ay - 1}年</span><span><i class="sw" style="background:var(--acc)"></i>${ay}年</span></div>
+    ${compareBars(A, P)}
+  </section>`}
+  <section class="card">
+    <h2>銘柄別の受取額（${label}）</h2>
+    ${rank.length ? rank.map((x, i) => `<div class="list-row" style="align-items:flex-start">
+      <span class="num sub" style="width:18px;padding-top:2px">${i + 1}</span>
+      <div class="grow"><div class="row"><i class="sw" style="background:${colorOf(x.h)};margin:0"></i><span class="grow ellipsis" style="font-weight:600">${esc(x.h.name)}</span><span class="num" style="font-weight:700">${yen(x.v)}</span></div>
+        <div style="height:6px;border-radius:3px;background:var(--track);margin:6px 0"><div style="height:100%;width:${(x.v / rank[0].v * 100).toFixed(1)}%;border-radius:3px;background:${colorOf(x.h)}"></div></div>
+        <div class="row small sub" style="justify-content:space-between"><span>${(x.v / aTotal * 100).toFixed(1)}%・${accLabel(x.h)}</span><span>${isAll ? `年平均 ${yen(x.v / Math.max(1, x.yrsHeld))}` : `${ay === CUR_Y ? '前年同期比' : '前年比'} ${fmtPct(x.chg)}`}</span></div>${!isAll && x.yoc != null ? `<div class="small sub" style="text-align:right">取得利回り ${x.yoc.toFixed(2)}%</div>` : ''}${isAll ? `<div class="small sub" style="text-align:right">${x.yrsHeld}年分の受取</div>` : ''}</div>
+    </div>`).join('') : '<div class="empty">この年の受取記録はまだありません</div>'}
+  </section>
+  <section class="card">
+    <h2>投資信託の分配金（${label}）</h2>
+    ${funds.length ? funds.map((f) => {
+      const t = f.o + f.sp, ratio = t ? f.sp / t * 100 : 0;
+      return `<div style="padding:10px 0;border-top:1px solid var(--line)">
+        <div class="row" style="margin-bottom:8px"><span class="grow ellipsis" style="font-weight:600">${esc(f.h.name)}</span><span class="num" style="font-weight:700">${yen(f.o + (inc ? f.sp : 0))}</span></div>
+        <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;background:var(--track)"><span style="flex:${f.o} 1 0;background:var(--acc)"></span>${f.sp ? `<span style="flex:${f.sp} 1 0;background:var(--sp)"></span>` : ''}</div>
+        <div class="row small" style="justify-content:space-between;margin-top:6px"><span>普通分配 <b class="num">${yen(f.o)}</b></span><span style="color:var(--sp-ink)">特別分配 <b class="num">${yen(f.sp)}</b>（${ratio.toFixed(1)}%）</span></div>
+      </div>`;
+    }).join('') : '<div class="empty">この年の投資信託の分配金はありません</div>'}
+  </section>
+  <section class="card">
+    <h2>口座ごとの内訳（${label}）</h2>
+    ${accs.map((a, i) => `<div class="list-row"><i class="sw" style="background:${['#9AA3AB', '#3FB68B', '#6FD0D8'][i]};margin:0"></i><span class="grow">${a.l}</span><span class="num" style="font-weight:600;width:56px;text-align:right">${accTotal ? (a.v / accTotal * 100).toFixed(1) : '0.0'}%</span><span class="num sub" style="width:80px;text-align:right">${yen(a.v)}</span></div>`).join('')}
+    <div class="total-bar" style="margin-top:10px;background:var(--acc-soft)"><span class="small" style="color:var(--acc-soft-ink)">NISAで免除された税金（目安）</span><span class="num" style="font-weight:700;color:var(--acc-soft-ink)">${yen(nisaSaved)}</span></div>
+  </section>
+  <section class="card">
+    <h2>種別ごとの内訳（${label}）</h2>
+    <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:var(--track)">${kinds.filter((k) => k.v > 0).map((k) => `<span style="flex:${k.v} 1 0;background:${kColors[k.t]}"></span>`).join('')}</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;margin-top:12px">${kinds.map((k) => `<div class="row small"><i class="sw" style="background:${kColors[k.t]};margin:0"></i><span class="grow">${k.t}</span><span class="num" style="font-weight:600">${kTotal ? (k.v / kTotal * 100).toFixed(1) : '0.0'}%</span></div>`).join('')}</div>
+  </section>`;
+}
+
+/* ========== 銘柄編集シート ========== */
+let DRAFT = null;
+function openEditor(id) {
+  const h = id ? DB.holdings.find((x) => x.id === id) : null;
+  DRAFT = h ? JSON.parse(JSON.stringify(h)) : { id: null, name: '', code: '', type: '国内株', qty: null, cost: null, price: null, months: {}, taxMode: 'jp', customTax: '', account: 'tokutei' };
+  renderEditor();
+}
+function renderEditor() {
+  const d = DRAFT, fund = isFund(d);
+  const ms = Object.keys(d.months).map(Number).sort((a, b) => a - b);
+  const t = taxRate(d) / 100;
+  let sumPer = 0, sumNet = 0;
+  ms.forEach((m) => { const v = num(d.months[m]) || 0; sumPer += v; sumNet += units(d) * v * (1 - t); });
+  $('#sheet').innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="銘柄の編集">
+    <div class="sheet-hdr"><button class="btn ghost" id="edCancel">キャンセル</button><h1>${d.id ? '銘柄を編集' : '銘柄を追加'}</h1><button class="btn ghost" id="edSave" style="font-weight:700">保存</button></div>
+    <div class="sec">基本情報</div>
+    <div class="form">
+      <label class="fr"><span style="width:84px">銘柄名</span><input class="wide" data-f="name" value="${esc(d.name)}" placeholder="例：三菱商事"></label>
+      <label class="fr"><span style="width:84px">コード</span><input class="wide" data-f="code" value="${esc(d.code)}" placeholder="任意"></label>
+    </div>
+    ${seg('edType', TYPES.map((x) => [x, x]), d.type).replace('class="seg"', 'class="seg" style="display:grid;width:100%"')}
+    <div class="sec">口座</div>
+    ${seg('edAcc', ACCOUNTS, d.account).replace('class="seg"', 'class="seg" style="display:grid;width:100%"')}
+    ${isNisa(d) ? `<div class="hint" style="color:var(--acc-soft-ink)">NISA口座のため国内の税金（20.315%）は免除されます。${d.taxMode === 'foreign' ? '海外株の現地課税10%はNISAでも差し引かれます。' : ''}</div>` : ''}
+    <div class="sec">保有と価格</div>
+    <div class="form">
+      <label class="fr"><span class="grow">${fund ? '保有口数' : '保有数量'}</span><input class="num" inputmode="decimal" data-f="qty" value="${d.qty ?? ''}" placeholder="0"><span class="sub" style="width:16px">${unitName(d)}</span></label>
+      <label class="fr" id="costRow"><span class="grow">平均取得価額 <span class="small" style="color:var(--sp-ink)">必須</span><br><span class="small sub">${perLabel(d)}</span></span><input class="num" inputmode="decimal" data-f="cost" value="${d.cost ?? ''}" placeholder="入力してください"><span class="sub" style="width:16px">円</span></label>
+      <label class="fr"><span class="grow">現在値<br><span class="small sub">任意・空欄でもOK${fund ? '（基準価額）' : ''}</span></span><input class="num" inputmode="decimal" data-f="price" value="${d.price ?? ''}" placeholder="未入力"><span class="sub" style="width:16px">円</span></label>
+    </div>
+    <div class="hint">海外株は円に換算した金額を入れます。現在値は自動取得しません。</div>
+    <div class="sec">配当月（タップで切り替え）</div>
+    <div class="mgrid card" style="padding:12px;margin-bottom:0">${Array.from({ length: 12 }, (_, i) => i + 1).map((m) => `<button class="mbtn num" data-edm="${m}" aria-pressed="${ms.includes(m)}">${m}月</button>`).join('')}</div>
+    <div class="sec"><span>各月の配当（${perLabel(d)}）</span>${ms.length > 1 ? `<button class="btn ghost row" id="copyFirst" style="min-height:36px;padding:0 4px;font-size:12px">${ic('copy', 14)}${ms[0]}月を全月にコピー</button>` : ''}</div>
+    <div class="form">
+      ${ms.length ? ms.map((m) => `<div class="fr" style="padding-right:6px">
+        <span class="num" style="width:36px;font-weight:700">${m}月</span>
+        <label class="field grow" style="${num(d.months[m]) == null ? 'border-color:var(--sp)' : ''}"><input class="num" inputmode="decimal" data-edamt="${m}" value="${d.months[m] ?? ''}" placeholder="0" aria-label="${m}月の${perLabel(d)}配当"><span class="sub small">円</span></label>
+        <span class="num small" style="width:70px;text-align:right" data-netof="${m}">${yen(units(d) * (num(d.months[m]) || 0) * (1 - t))}</span>
+        <button class="icon-btn" data-copy="${m}" aria-label="${m}月の金額を他の配当月にコピー">${ic('copy', 20)}</button>
+      </div>`).join('') : '<div class="empty">上で配当月を選ぶと入力欄が出ます</div>'}
+      ${ms.length ? `<div class="fr small"><span class="grow sub">${perLabel(d)}の年間配当 <b class="num" style="color:var(--ink)" id="sumPer">${fmtNum(sumPer)}円</b></span><span class="sub">年間（税引後）</span><b class="num" id="sumNet">${yen(sumNet)}</b></div>` : ''}
+    </div>
+    <div class="hint">増配や記念配当で月ごとに違う金額も入れられます。コピーのアイコンでその月の金額を他の配当月へコピーします。${d.id ? '金額を変えて保存すると、いつから適用するかを選べます（過去の配当には影響しません）。' : ''}</div>
+    ${d.id && (d.history || []).length ? `<div class="sec">配当額の変更履歴</div>
+    <div class="form">${d.history.slice().reverse().map((e, i, arr) => {
+      const sum = Object.values(e.months).reduce((a, v) => a + (num(v) || 0), 0);
+      const idx = arr.length - 1 - i;
+      return `<div class="fr" style="padding-right:6px"><span class="grow"><span style="display:block;font-weight:600">${fromLabel(e.from)}${i === 0 ? ' <span class="badge b-act" style="padding:1px 6px">最新</span>' : ''}</span><span class="small sub">${Object.keys(e.months).map(Number).sort((a, b) => a - b).map((m) => `${m}月 ${fmtNum(num(e.months[m]))}`).join('・') || '配当なし'}</span></span><span class="num small" style="white-space:nowrap">年 ${fmtNum(sum)}円</span>${idx > 0 ? `<button class="icon-btn" data-delhist="${idx}" aria-label="${fromLabel(e.from)}の変更を取り消す"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>` : '<span style="width:44px"></span>'}</div>`;
+    }).join('')}</div>` : ''}
+    <div class="sec">税率</div>
+    <div class="form" role="radiogroup" aria-label="税率">
+      ${(isNisa(d)
+        ? [['jp', '国内銘柄（非課税）', 'NISAのため税金なし', '0%'], ['foreign', '海外株（外国税10%のみ）', '国内課税はNISAで免除', '10%'], ['custom', '手動入力', '外国税率が10%でない国など', d.taxMode === 'custom' ? fmtNum(taxRate(d), 3) + '%' : '']]
+        : [['jp', '国内課税のみ', '所得税15.315%＋住民税5%', '20.315%'], ['foreign', '海外株（外国税10%）', '外国10%控除後に国内20.315%', '28.28%'], ['custom', '手動入力', '外国税率が異なる国など', d.taxMode === 'custom' ? fmtNum(taxRate(d), 3) + '%' : '']]).map(([v, l, s2, r]) => `
+        <button class="radio" data-tax="${v}" role="radio" aria-checked="${d.taxMode === v}"><i class="ring"></i><span class="grow"><span style="display:block;font-weight:500">${l}</span><span class="small sub">${s2}</span></span><span class="num" style="font-weight:600">${r}</span></button>`).join('')}
+      ${d.taxMode === 'custom' ? `<div class="fr" style="background:var(--card2);border-radius:0 0 16px 16px"><span class="grow" style="padding-left:34px">税率を入力</span><label class="field" style="width:120px;min-height:40px"><input class="num" inputmode="decimal" data-f="customTax" value="${esc(d.customTax)}" placeholder="0" aria-label="税率（％）"><span class="sub">%</span></label></div>` : ''}
+    </div>
+    ${fund ? '<div class="hint">投資信託の税率は普通分配にだけかかります。特別分配（元本払戻金）は非課税として計算します。</div>' : ''}
+    ${d.id ? '<button class="btn danger" id="edDelete" style="width:100%;margin-top:24px">この銘柄を削除</button>' : ''}
+  </div>`;
+}
+function editorRecalc() {
+  const d = DRAFT, t = taxRate(d) / 100;
+  let sumPer = 0, sumNet = 0;
+  Object.keys(d.months).forEach((m) => {
+    const v = num(d.months[m]) || 0; sumPer += v; sumNet += units(d) * v * (1 - t);
+    const el = document.querySelector(`[data-netof="${m}"]`); if (el) el.textContent = yen(units(d) * v * (1 - t));
+  });
+  const a = $('#sumPer'), b = $('#sumNet');
+  if (a) a.textContent = fmtNum(sumPer) + '円'; if (b) b.textContent = yen(sumNet);
+}
+function copyMonth(from) {
+  const d = DRAFT, v = d.months[from] ?? '';
+  const others = Object.keys(d.months).map(Number).filter((m) => m !== from).sort((a, b) => a - b);
+  others.forEach((m) => { d.months[m] = v; });
+  renderEditor();
+  toast(`${from}月の ${v === '' ? '0' : v}円 を ${others.join('・')}月 にコピーしました`);
+}
+
+/* ========== 設定シート ========== */
+function openSettings() {
+  $('#sheet').innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="設定">
+    <div class="sheet-hdr"><span style="width:80px"></span><h1>設定</h1><button class="btn ghost" id="stClose" style="width:80px;font-weight:700">閉じる</button></div>
+    <div class="sec">バックアップ</div>
+    <div class="card"><div class="small sub" style="margin-bottom:12px">データはこのiPhoneのブラウザ内に保存されます。機種変更やSafariのデータ削除に備えて、定期的に書き出してください。</div>
+      <div class="row"><button class="btn primary grow" id="exportBtn">書き出し</button><button class="btn grow" id="copyBackup">コピー</button><label class="btn grow" style="display:flex;align-items:center;justify-content:center">読み込み<input type="file" id="importFile" accept="application/json,.json" hidden></label></div></div>
+    <div class="sec">データ</div>
+    <div class="card"><div class="row" style="flex-direction:column;align-items:stretch">
+      <button class="btn" id="resetDummy">ダミーデータに戻す</button>
+      <button class="btn danger" id="clearAll">すべてのデータを削除</button></div></div>
+    <div class="hint">ホーム画面に追加：Safariの共有ボタン →「ホーム画面に追加」</div>
+  </div>`;
+}
+
+/* ========== 描画 ========== */
+function render() {
+  const app = $('#app');
+  app.innerHTML = S.tab === 'home' ? renderHome() : S.tab === 'holdings' ? renderHoldings() : S.tab === 'input' ? renderInput() : renderAnalysis();
+  $('#tabs').innerHTML = [['home', 'ホーム', 'home'], ['holdings', '銘柄', 'list'], ['input', '配当入力', 'cal'], ['analysis', '分析', 'chart']]
+    .map(([k, l, i]) => `<button data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>${ic(i)}${l}</button>`).join('');
+}
+function go(tab) { S.tab = tab; render(); window.scrollTo(0, 0); }
+
+/* ========== イベント ========== */
+document.addEventListener('click', (ev) => {
+  const t = ev.target.closest('button,[data-month],[data-tab],[data-anayear],[data-anamonth]');
+  if (!t) return;
+  const ds = t.dataset;
+  // タブ
+  if (ds.tab) return go(ds.tab);
+  // ホームの棒グラフ → 入力画面
+  if (ds.month && S.tab === 'home') { S.inputYear = S.year; S.inputMonth = +ds.month; return go('input'); }
+  if (ds.month && S.tab === 'input') { S.inputMonth = +ds.month; return render(); }
+  if (ds.anayear) {
+    S.anaYear = +ds.anayear; S.anaMonth = ds.anamonth ? +ds.anamonth : null; render();
+    const el = document.getElementById('anaDetail'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  if (ds.anamonth) { S.anaMonth = S.anaMonth === +ds.anamonth ? null : +ds.anamonth; return render(); }
+  if (ds.goinput) { S.inputYear = CUR_Y; S.inputMonth = +ds.goinput; return go('input'); }
+  if (ds.filter) { S.filter = ds.filter; return render(); }
+  if (t.id === 'addHolding') return openEditor(null);
+  if (ds.edit) return openEditor(ds.edit);
+  if (t.id === 'openSettings') return openSettings();
+  // セグメント
+  if (ds.seg) {
+    const name = ds.seg, v = ds.v;
+    if (name === 'edAcc') { DRAFT.account = v; return renderEditor(); }
+    if (name === 'edType') { DRAFT.type = v; if (v === '海外株' && DRAFT.taxMode === 'jp') DRAFT.taxMode = 'foreign'; return renderEditor(); }
+  }
+  // 入力画面
+  if (ds.fill) {
+    const h = DB.holdings.find((x) => x.id === ds.fill), e = expectedFor(h, S.inputMonth, S.inputYear);
+    setRec(S.inputYear, h.id, S.inputMonth, { basis: 'post', amount: Math.round(e.net), special: isFund(h) ? 0 : undefined });
+    toast('見込み額で記入しました'); return render();
+  }
+  if (ds.clear) { setRec(S.inputYear, ds.clear, S.inputMonth, null); toast('記入をクリアしました'); return render(); }
+  // 編集シート
+  if (t.id === 'edCancel') { $('#sheet').innerHTML = ''; DRAFT = null; return; }
+  if (t.id === 'edSave') {
+    const d = DRAFT;
+    if (!d.name.trim()) { toast('銘柄名を入力してください'); return; }
+    if (!(num(d.cost) > 0)) {
+      toast('平均取得価額を入力してください');
+      const row = $('#costRow'); if (row) { row.style.background = 'var(--sp-soft)'; row.scrollIntoView({ block: 'center', behavior: 'smooth' }); row.querySelector('input').focus(); }
+      return;
+    }
+    ['qty', 'cost', 'price'].forEach((k) => { d[k] = num(d[k]); });
+    Object.keys(d.months).forEach((m) => { d.months[m] = num(d.months[m]) ?? 0; });
+    const old = d.id ? DB.holdings.find((x) => x.id === d.id) : null;
+    const norm = (o) => JSON.stringify(Object.keys(o || {}).map(Number).sort((a, b) => a - b).map((m) => [m, num(o[m])]));
+    const commit = () => {
+      if (d.id) { DB.holdings[DB.holdings.findIndex((x) => x.id === d.id)] = d; } else { d.id = uid(); DB.holdings.push(d); }
+      save(); $('#sheet').innerHTML = ''; DRAFT = null; toast('保存しました'); render();
+    };
+    if (!old) { d.history = [{ from: 0, months: { ...d.months } }]; return commit(); }
+    const latest = d.history[d.history.length - 1];
+    if (norm(latest.months) === norm(d.months)) return commit();
+    askEffective().then((from) => {
+      if (from == null) return;
+      const months = { ...d.months };
+      if (from === 0) d.history = [{ from: 0, months }];
+      else d.history = d.history.filter((e) => e.from < from).concat([{ from, months }]);
+      commit();
+    });
+    return;
+  }
+  if (ds.delhist) {
+    const i = +ds.delhist; DRAFT.history.splice(i, 1);
+    DRAFT.months = { ...DRAFT.history[DRAFT.history.length - 1].months };
+    toast('変更を取り消しました（保存で確定）'); return renderEditor();
+  }
+  if (t.id === 'edDelete') {
+    askConfirm(`「${DRAFT.name}」を削除しますか？記入済みの配当も削除されます。`).then((ok) => { if (!ok) return;
+    DB.holdings = DB.holdings.filter((x) => x.id !== DRAFT.id);
+    Object.values(DB.records).forEach((y) => { delete y[DRAFT.id]; });
+    save(); $('#sheet').innerHTML = ''; DRAFT = null; toast('削除しました'); render(); }); return;
+  }
+  if (ds.edm) {
+    const m = +ds.edm;
+    if (m in DRAFT.months) delete DRAFT.months[m];
+    else { const vals = Object.values(DRAFT.months); DRAFT.months[m] = vals.length ? vals[vals.length - 1] : ''; }
+    return renderEditor();
+  }
+  if (ds.copy) return copyMonth(+ds.copy);
+  if (t.id === 'copyFirst') return copyMonth(Math.min(...Object.keys(DRAFT.months).map(Number)));
+  if (ds.tax) { DRAFT.taxMode = ds.tax; return renderEditor(); }
+  // 設定
+  if (t.id === 'stClose') { $('#sheet').innerHTML = ''; return render(); }
+  if (t.id === 'copyBackup') {
+    navigator.clipboard.writeText(JSON.stringify(DB)).then(() => toast('バックアップをコピーしました。メモ等に貼り付けて保管できます')).catch(() => toast('コピーできませんでした'));
+    return;
+  }
+  if (t.id === 'exportBtn') {
+    const blob = new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `haitou-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000); return;
+  }
+  if (t.id === 'resetDummy') { askConfirm('今のデータを消して、ダミーデータに戻しますか？', '戻す').then((ok) => { if (ok) { DB = dummyData(); save(); $('#sheet').innerHTML = ''; toast('ダミーデータに戻しました'); render(); } }); return; }
+  if (t.id === 'clearAll') { askConfirm('すべての銘柄と配当データを削除しますか？元に戻せません。').then((ok) => { if (ok) { DB = { v: 1, holdings: [], records: {}, ui: { includeSpecial: true } }; save(); $('#sheet').innerHTML = ''; toast('削除しました'); render(); } }); return; }
+});
+
+document.addEventListener('change', (ev) => {
+  const t = ev.target;
+  if (t.id === 'homeYear') { S.year = +t.value; return render(); }
+  if (t.id === 'inputYear') { S.inputYear = +t.value; return render(); }
+  if (t.id === 'anaYear') { S.anaYear = t.value === 'all' ? 'all' : +t.value; S.anaMonth = null; return render(); }
+  if (t.id === 'homeSp' || t.id === 'anaSp') { DB.ui.includeSpecial = t.checked; save(); return render(); }
+  if (t.id === 'showAll') { S.showAll = t.checked; return render(); }
+  if (t.dataset.rec) {
+    const hid = t.closest('[data-hid]').dataset.hid;
+    const old = recOf(S.inputYear, hid, S.inputMonth);
+    const r = { ...(old || { basis: 'post' }) };
+    if (r.basis === 'pre') { // 以前の税引前の記録は税引後に換算してそろえる
+      const h = DB.holdings.find((x) => x.id === hid);
+      r.amount = Math.round(cell(S.inputYear, h, S.inputMonth).ordNet); r.basis = 'post';
+    }
+    r[t.dataset.rec] = num(t.value);
+    if (r.amount == null && r.special == null) setRec(S.inputYear, hid, S.inputMonth, null);
+    else { if (r.amount == null) r.amount = 0; setRec(S.inputYear, hid, S.inputMonth, r); }
+    return render();
+  }
+  if (t.id === 'importFile' && t.files[0]) {
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const d = JSON.parse(fr.result);
+        if (!Array.isArray(d.holdings) || typeof d.records !== 'object') throw new Error('形式が違います');
+        DB = d; DB.ui ||= { includeSpecial: true }; save(); $('#sheet').innerHTML = ''; toast('読み込みました'); render();
+      } catch (e) { toast('読み込めませんでした：' + e.message); }
+    };
+    fr.readAsText(t.files[0]);
+  }
+});
+
+document.addEventListener('input', (ev) => {
+  const t = ev.target;
+  if (!DRAFT) return;
+  if (t.dataset.f) { DRAFT[t.dataset.f] = t.value; if (['qty', 'customTax'].includes(t.dataset.f)) editorRecalc(); }
+  if (t.dataset.edamt) { DRAFT.months[t.dataset.edamt] = t.value; t.closest('.field').style.borderColor = t.value === '' ? 'var(--sp)' : ''; editorRecalc(); }
+});
+
+load();
+render();
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !location.hostname.endsWith('claude.ai') && !location.hostname.includes('claudeusercontent')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

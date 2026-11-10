@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E252A"/><stop offset="1" stop-color="#0B0E10"/></linearGradient>
+<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5BD3A5"/><stop offset="1" stop-color="#2E9A72"/></linearGradient>
+<linearGradient id="coin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F6CF86"/><stop offset="1" stop-color="#D9903B"/></linearGradient></defs>
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<rect x="190" y="560" width="120" height="250" rx="28" fill="url(#g)" opacity=".55"/>
+<rect x="352" y="470" width="120" height="340" rx="28" fill="url(#g)" opacity=".75"/>
+<rect x="514" y="370" width="120" height="440" rx="28" fill="url(#g)" opacity=".9"/>
+<rect x="676" y="260" width="120" height="550" rx="28" fill="url(#g)"/>
+<rect x="170" y="836" width="684" height="20" rx="10" fill="#343B41"/>
+<circle cx="722" cy="212" r="124" fill="url(#coin)"/>
+<circle cx="722" cy="212" r="96" fill="none" stroke="#B9732A" stroke-width="10" opacity=".55"/>
+<text x="722" y="258" text-anchor="middle" font-family="Inter" font-weight="800" font-size="138" fill="#5A3510">¥</text>
+</svg>
