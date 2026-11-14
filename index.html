@@ -227,7 +227,10 @@ function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } c
 function recOf(y, hid, m) { return DB.records[y]?.[hid]?.[m] || null; }
 function setRec(y, hid, m, rec) {
   DB.records[y] ||= {}; DB.records[y][hid] ||= {};
-  if (rec && rec.rate == null) { const h = DB.holdings.find((x) => x.id === hid); if (h) rec.rate = taxRate(h); }
+  const hh = DB.holdings.find((x) => x.id === hid);
+  if (rec && rec.rate == null && hh) rec.rate = taxRate(hh);
+  // 売却済み銘柄に後から記録を足したら、最終受取月だけ更新（売却済みのまま）
+  if (rec && hh && hh.sold && (!hh.endYm || ym(y, m) > hh.endYm)) hh.endYm = ym(y, m);
   if (rec) DB.records[y][hid][m] = rec; else delete DB.records[y][hid][m];
   save();
 }
@@ -241,7 +244,7 @@ function scheduleAt(h, y, m) {
   return cur.months || {};
 }
 const held = (h, y, m) => (!h.startYm || ym(y, m) >= h.startYm) && (!h.endYm || ym(y, m) <= h.endYm); // 保有期間外は見込みを出さない
-const isSold = (h) => !!h.endYm && h.endYm < ym(CUR_Y, CUR_M);
+const isSold = (h) => !!h.sold; // 売却済みは明示フラグで判定（受取月が今月以降でも保有中にならない）
 const paysIn = (h, y, m) => held(h, y, m) && num(scheduleAt(h, y, m)[m]) != null;
 /** 今月から12か月分の予定（1株・1口・1万口あたり） */
 function forwardPer(h) {
@@ -250,6 +253,8 @@ function forwardPer(h) {
   return sum;
 }
 function migrate(db) {
+  // 旧データ：保有終了月があるものは売却済みとして扱う
+  db.holdings.forEach((h) => { if (h.sold == null) h.sold = !!h.endYm; });
   // 種別「ETF」は廃止：海外課税なら海外株、それ以外は国内株に振り分け
   db.holdings.forEach((h) => { if (h.type === 'ETF') h.type = h.taxMode === 'foreign' ? '海外株' : '国内株'; });
   db.loans ||= [];
@@ -925,19 +930,19 @@ function renderEditor() {
     ${seg('edAcc', ACCOUNTS, d.account).replace('class="seg"', 'class="seg" style="display:grid;width:100%"')}
     ${isNisa(d) ? `<div class="hint" style="color:var(--acc-soft-ink)">NISA口座のため国内の税金（20.315%）は免除されます。${d.taxMode === 'foreign' ? '海外株の現地課税10%はNISAでも差し引かれます。' : ''}</div>` : ''}
     <div class="sec">保有状況</div>
-    ${seg('edStatus', [['hold', '保有中'], ['sold', '売却済み・過去の銘柄']], d.endYm ? 'sold' : 'hold').replace('class="seg"', 'class="seg" style="display:grid;width:100%"')}
-    ${d.endYm ? '<div class="hint">過去の銘柄は、保有数量・取得価額・配当月・税率の入力は不要です。下の「受け取った月と金額」に、何月に税引後でいくら受け取ったかだけを入れてください。</div>' : ''}
-    ${d.endYm ? '' : `<div class="sec">保有と価格</div>
+    ${seg('edStatus', [['hold', '保有中'], ['sold', '売却済み・過去の銘柄']], d.sold ? 'sold' : 'hold').replace('class="seg"', 'class="seg" style="display:grid;width:100%"')}
+    ${d.sold ? '<div class="hint">過去の銘柄は、保有数量・取得価額・配当月・税率の入力は不要です。下の「受け取った月と金額」に、何月に税引後でいくら受け取ったかだけを入れてください。</div>' : ''}
+    ${d.sold ? '' : `<div class="sec">保有と価格</div>
     <div class="form">
-      ${d.endYm ? `<div class="fr"><span class="grow">保有終了<br><span class="small sub">売却した月</span></span>
+      ${d.sold ? `<div class="fr"><span class="grow">保有終了<br><span class="small sub">売却した月</span></span>
         <select class="pill num" data-end="y" aria-label="保有終了の年" style="height:36px;padding:0 26px 0 10px;background-position:right 8px center">${Array.from({ length: 12 }, (_, i) => CUR_Y - 10 + i).map((y) => `<option value="${y}" ${Math.floor(d.endYm / 100) === y ? 'selected' : ''}>${y}年</option>`).join('')}</select>
         <select class="pill num" data-end="m" aria-label="保有終了の月" style="height:36px;padding:0 26px 0 10px;background-position:right 8px center">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${d.endYm % 100 === i + 1 ? 'selected' : ''}>${i + 1}月</option>`).join('')}</select></div>` : ''}
       <label class="fr"><span class="grow">${fund ? '保有口数' : '保有数量'}</span><input class="num" inputmode="decimal" enterkeyhint="done" data-f="qty" value="${d.qty ?? ''}" placeholder="0"><span class="sub" style="width:16px">${unitName(d)}</span></label>
-      <label class="fr" id="costRow"><span class="grow">平均取得価額 ${d.endYm ? '<span class="small sub">任意</span>' : '<span class="small" style="color:var(--sp-ink)">必須</span>'}<br><span class="small sub">${perLabel(d)}</span></span><input class="num" inputmode="decimal" enterkeyhint="done" data-f="cost" value="${d.cost ?? ''}" placeholder="入力してください"><span class="sub" style="width:16px">円</span></label>
+      <label class="fr" id="costRow"><span class="grow">平均取得価額 ${d.sold ? '<span class="small sub">任意</span>' : '<span class="small" style="color:var(--sp-ink)">必須</span>'}<br><span class="small sub">${perLabel(d)}</span></span><input class="num" inputmode="decimal" enterkeyhint="done" data-f="cost" value="${d.cost ?? ''}" placeholder="入力してください"><span class="sub" style="width:16px">円</span></label>
       <div class="fr"><span class="grow">保有開始<br><span class="small sub">この月より前は見込みを出しません</span></span>
         <select class="pill num" data-start="y" aria-label="保有開始の年" style="height:36px;padding:0 26px 0 10px;background-position:right 8px center"><option value="">指定なし</option>${Array.from({ length: 8 }, (_, i) => CUR_Y - 6 + i).map((y) => `<option value="${y}" ${d.startYm && Math.floor(d.startYm / 100) === y ? 'selected' : ''}>${y}年</option>`).join('')}</select>
         ${d.startYm ? `<select class="pill num" data-start="m" aria-label="保有開始の月" style="height:36px;padding:0 26px 0 10px;background-position:right 8px center">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${d.startYm % 100 === i + 1 ? 'selected' : ''}>${i + 1}月</option>`).join('')}</select>` : ''}</div>
-      ${d.endYm ? '' : `<label class="fr"><span class="grow">現在値<br><span class="small sub">任意・空欄でもOK${fund ? '（基準価額）' : ''}</span></span><input class="num" inputmode="decimal" enterkeyhint="done" data-f="price" value="${d.price ?? ''}" placeholder="未入力"><span class="sub" style="width:16px">円</span></label>`}
+      ${d.sold ? '' : `<label class="fr"><span class="grow">現在値<br><span class="small sub">任意・空欄でもOK${fund ? '（基準価額）' : ''}</span></span><input class="num" inputmode="decimal" enterkeyhint="done" data-f="price" value="${d.price ?? ''}" placeholder="未入力"><span class="sub" style="width:16px">円</span></label>`}
     </div>
     <div class="hint">海外株は円に換算した金額を入れます。現在値は自動取得しません。</div>
     <div class="sec">配当月（タップで切り替え）</div>
@@ -953,7 +958,7 @@ function renderEditor() {
       ${ms.length ? `<div class="fr small"><span class="grow sub">${perLabel(d)}の年間配当 <b class="num" style="color:var(--ink)" id="sumPer">${fmtNum(sumPer)}円</b></span><span class="sub">年間（税引後）</span><b class="num" id="sumNet">${yen(sumNet)}</b></div>` : ''}
     </div>
     <div class="hint">増配や記念配当で月ごとに違う金額も入れられます。コピーのアイコンでその月の金額を他の配当月へコピーします。${d.id ? '金額を変えて保存すると、いつから適用するかを選べます（過去の配当には影響しません）。' : ''}</div>`}
-    <div class="sec">${d.endYm ? '受け取った月と金額' : '受取の記録'}<span class="small sub">税引後</span></div>
+    <div class="sec">${d.sold ? '受け取った月と金額' : '受取の記録'}<span class="small sub">税引後</span></div>
     <div class="form">
       ${(() => {
         const list = draftRecs(d);
@@ -981,7 +986,7 @@ function renderEditor() {
       </div>
     </div>
     <div class="hint">配当入力画面で記入した分もここに表示されます。保存すると反映されます。</div>
-    ${d.endYm ? '' : `${d.id && (d.history || []).length ? `<div class="sec">配当額の変更履歴</div>
+    ${d.sold ? '' : `${d.id && (d.history || []).length ? `<div class="sec">配当額の変更履歴</div>
     <div class="form">${d.history.slice().reverse().map((e, i, arr) => {
       const sum = Object.values(e.months).reduce((a, v) => a + (num(v) || 0), 0);
       const idx = arr.length - 1 - i;
@@ -1121,8 +1126,8 @@ document.addEventListener('click', (ev) => {
     const name = ds.seg, v = ds.v;
     if (name === 'edAcc') { DRAFT.account = v; return renderEditor(); }
     if (name === 'edStatus') {
-      if (v === 'sold') { let y = CUR_Y, m = CUR_M - 1; if (m < 1) { m = 12; y -= 1; } DRAFT.endYm = DRAFT.endYm || ym(y, m); }
-      else DRAFT.endYm = null;
+      if (v === 'sold') { let y = CUR_Y, m = CUR_M - 1; if (m < 1) { m = 12; y -= 1; } DRAFT.sold = true; DRAFT.endYm = DRAFT.endYm || ym(y, m); }
+      else { DRAFT.sold = false; DRAFT.endYm = null; }
       return renderEditor();
     }
     if (name === 'edType') { DRAFT.type = v; if (v === '海外株' && DRAFT.taxMode === 'jp') DRAFT.taxMode = 'foreign'; return renderEditor(); }
@@ -1170,14 +1175,14 @@ document.addEventListener('click', (ev) => {
   if (t.id === 'edSave') {
     const d = DRAFT;
     if (!d.name.trim()) { toast('銘柄名を入力してください'); return; }
-    if (d.endYm) {
+    if (d.sold) {
       const recs = draftRecs(d);
       if (!recs.length) { toast('受け取った月と金額を1件以上追加してください'); return; }
       // 過去の銘柄は受取の記録だけを持つ（数量・取得価額・配当予定は使わない）
       d.qty = null; d.cost = null; d.price = null; d.startYm = null; d.months = {}; d.history = [{ from: 0, months: {} }];
       d.endYm = Math.max(...recs.map((x) => ym(x.y, x.m)));
     }
-    if (!d.endYm && !(num(d.cost) > 0)) {
+    if (!d.sold && !(num(d.cost) > 0)) {
       toast('平均取得価額を入力してください');
       const row = $('#costRow'); if (row) { row.style.background = 'var(--sp-soft)'; row.scrollIntoView({ block: 'center', behavior: 'smooth' }); row.querySelector('input').focus(); }
       return;
@@ -1189,7 +1194,7 @@ document.addEventListener('click', (ev) => {
     const commit = () => {
       const adds = d._adds || [], dels = d._dels || [];
       // 新しく追加する売却済み銘柄で終了月を変えていなければ、最後に受け取った月を終了月にする
-      if (!d.id && d.endYm && !d._endTouched && adds.length) d.endYm = Math.max(...adds.map((x) => ym(x.y, x.m)));
+      if (!d.id && d.sold && !d._endTouched && adds.length) d.endYm = Math.max(...adds.map((x) => ym(x.y, x.m)));
       delete d._adds; delete d._dels; delete d._rx; delete d._endTouched;
       if (d.id) { DB.holdings[DB.holdings.findIndex((x) => x.id === d.id)] = d; } else { d.id = uid(); DB.holdings.push(d); }
       dels.forEach((k) => { const [y, m] = k.split('-').map(Number); setRec(y, d.id, m, null); });
@@ -1199,7 +1204,7 @@ document.addEventListener('click', (ev) => {
     if (!old) {
       d.history = [{ from: 0, months: { ...d.months } }];
       const pastPays = Object.keys(d.months).map(Number).filter((m) => m < CUR_M);
-      if (d.startYm || d.endYm || !pastPays.length) return commit();
+      if (d.startYm || d.sold || !pastPays.length) return commit();
       askPast(pastPays).then((ans) => {
         if (ans == null) return;
         d.startYm = ans; commit();
