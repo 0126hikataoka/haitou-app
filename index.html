@@ -129,7 +129,7 @@ svg text{font-family:-apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif
 'use strict';
 /* ========== 定数・ユーティリティ ========== */
 const STORE_KEY = 'haitou-app-v1';
-const APP_VERSION = '1.26'; // 更新のたびに上げる（sw.js の VERSION もそろえる）
+const APP_VERSION = '1.28'; // 更新のたびに上げる（sw.js の VERSION もそろえる）
 const TYPES = ['投資信託', '国内株', '海外株'];
 const TAX = { jp: 20.315, foreign: 28.2835 }; // 海外: 1-(0.9×0.79685)
 const COLORS = ['#3FB68B', '#E0A458', '#5E8FD6', '#E3D27A', '#A98BD6', '#E07A8E', '#6FD0D8', '#C2C9CF'];
@@ -528,7 +528,8 @@ function renderHome() {
   const inc = DB.ui.includeSpecial;
   const ys = yearSummary(S.year, { includeSpecial: inc });
   const hasSp = ys.sp > 0;
-  const parts = DB.holdings.map((h) => ({ h, v: ys.perHolding[h.id].ord + (inc ? ys.perHolding[h.id].sp : 0), color: colorOf(h) }))
+  const dsp = DB.ui.donutSp !== false; // 銘柄別の比率で特別分配を含むか（既定は含む）
+  const parts = DB.holdings.map((h) => ({ h, v: ys.perHolding[h.id].ord + (dsp ? ys.perHolding[h.id].sp : 0), color: colorOf(h) }))
     .filter((p) => p.v > 0).sort((a, b) => b.v - a.v);
   const total = parts.reduce((a, p) => a + p.v, 0);
   const isCur = S.year === CUR_Y, isPast = S.year < CUR_Y;
@@ -554,6 +555,7 @@ function renderHome() {
   <section class="card">
     <div class="row" style="justify-content:space-between;margin-bottom:12px"><h2 style="margin:0">銘柄別の比率</h2>${donutToggles()}</div>
     <div style="display:flex;justify-content:center">${donut(parts.map((p) => ({ v: p.v, color: p.color, name: p.h.name })), '年間合計', jpShort(total) + '円')}</div>
+    ${ys.sp > 0 || DB.holdings.some((h) => isFund(h) && !isSold(h)) ? `<label class="switch"><span class="small">特別分配（元本払戻金）を含む</span><input type="checkbox" id="donutSp" ${dsp ? 'checked' : ''}></label>` : ''}
     <div style="margin-top:8px">${parts.length ? parts.map((p) => `
       <div class="list-row"><i class="sw" style="background:${p.color};width:12px;height:12px;margin:0"></i>
       <span class="grow ellipsis">${esc(p.h.name)}</span>
@@ -785,10 +787,11 @@ function renderAnalysis() {
   const ytdCmp = prev && prevYtd > 0 ? (sumMonths(cur, Math.max(elapsed, 1)) / prevYtd - 1) * 100 : null;
   // 直近12か月
   let ttm = 0;
-  for (let k = 1; k <= 12; k++) {
+  for (let k = 0; k < 12; k++) { // 今月を終わりとする12か月
     let y = CUR_Y, m = CUR_M - k; if (m <= 0) { m += 12; y -= 1; }
     const ay = rows.find((r) => r.y === y); if (ay) ttm += ay.months[m - 1];
   }
+  ttm -= loanMonth(CUR_Y, CUR_M); // 今月分の返済も差し引く
   const costTotal = DB.holdings.reduce((a, h) => a + units(h) * (num(h.cost) || 0), 0);
   const cumulative = rows.reduce((a, r) => a + r.total, 0);
   const full = rows.filter((r) => r.y < CUR_Y && r.total > 0);
@@ -815,14 +818,16 @@ function renderAnalysis() {
   const P = isAll ? null : rows.find((r) => r.y === ay - 1) || null;
   const aTotal = A.div;
   // 銘柄ランキング
+  const rsp = DB.ui.rankSp !== false; // 銘柄別の受取額で特別分配を含むか（既定は含む）
   const rank = DB.holdings.map((h) => {
-    const v = A.per[h.id].ord + (inc ? A.per[h.id].sp : 0);
+    const v = A.per[h.id].ord + (rsp ? A.per[h.id].sp : 0);
     let pv = 0;
-    if (P) { const upto = ay === CUR_Y ? CUR_M - 1 : 12; for (let m = 1; m <= upto; m++) { const c = actualCell(ay - 1, h, m); if (c) pv += c.ord + (inc ? c.sp : 0); } }
+    if (P) { const upto = ay === CUR_Y ? CUR_M - 1 : 12; for (let m = 1; m <= upto; m++) { const c = actualCell(ay - 1, h, m); if (c) pv += c.ord + (rsp ? c.sp : 0); } }
     const cost = units(h) * (num(h.cost) || 0);
     const yrsHeld = rows.filter((r) => (r.per[h.id]?.ord || 0) + (r.per[h.id]?.sp || 0) > 0).length;
     return { h, v, pv, yrsHeld, chg: pv > 0 ? (v / pv - 1) * 100 : null, yoc: cost > 0 ? A.per[h.id].ord / cost * 100 : null };
   }).filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
+  const rTotal = rank.reduce((t, x) => t + x.v, 0);
   // 口座・種別・投信
   const kinds = TYPES.map((t) => ({ t, v: 0 }));
   const accs = ACCOUNTS.map(([k, l]) => ({ k, l, v: 0 }));
@@ -887,7 +892,7 @@ function renderAnalysis() {
   ${(() => {
     // 銘柄ごとの実績利回り：直近12か月に受け取った額（税引後）÷ 取得額
     const ysp = !!DB.ui.yieldSp;
-    const win = []; for (let k = 1; k <= 12; k++) { let y = CUR_Y, m = CUR_M - k; if (m <= 0) { m += 12; y -= 1; } win.push([y, m]); }
+    const win = []; for (let k = 0; k < 12; k++) { let y = CUR_Y, m = CUR_M - k; if (m <= 0) { m += 12; y -= 1; } win.push([y, m]); }
     const items = DB.holdings.filter((h) => !isSold(h) && units(h) * (num(h.cost) || 0) > 0).map((h) => {
       let ord = 0, sp = 0, months = 0;
       win.forEach(([y, m]) => { const a = actualCell(y, h, m); if (a) { ord += a.ord; sp += a.sp; } if (held(h, y, m)) months++; });
@@ -935,12 +940,13 @@ function renderAnalysis() {
   </section>`}
   <section class="card">
     <div class="row" style="justify-content:space-between;margin-bottom:12px;gap:8px"><h2 style="margin:0;min-width:0">銘柄別の受取額<span style="white-space:nowrap">（${label}）</span></h2>${rank.length ? donutToggles() : ''}</div>${anyLoan ? '<div class="small sub" style="margin:-8px 0 6px">配当のみ（ローン返済前）</div>' : ''}
-    ${rank.length ? `<div style="display:flex;justify-content:center;margin:4px 0 8px">${donut(rank.map((x) => ({ v: x.v, color: colorOf(x.h), name: x.h.name })), isAll ? '全期間の合計' : label + 'の合計', jpShort(aTotal) + '円')}</div>` : ''}
+    ${rank.length ? `<div style="display:flex;justify-content:center;margin:4px 0 8px">${donut(rank.map((x) => ({ v: x.v, color: colorOf(x.h), name: x.h.name })), isAll ? '全期間の合計' : label + 'の合計', jpShort(rTotal) + '円')}</div>` : ''}
+    ${rank.length && (A.sp > 0 || DB.holdings.some((h) => isFund(h))) ? `<label class="switch"><span class="small">特別分配（元本払戻金）を含む</span><input type="checkbox" id="rankSp" ${rsp ? 'checked' : ''}></label>` : ''}
     ${rank.length ? rank.map((x, i) => `<div class="list-row" style="align-items:flex-start">
       <span class="num sub" style="width:18px;padding-top:2px">${i + 1}</span>
       <div class="grow"><div class="row"><i class="sw" style="background:${colorOf(x.h)};margin:0"></i><span class="grow ellipsis" style="font-weight:600">${esc(x.h.name)}</span><span class="num" style="font-weight:700">${yen(x.v)}</span></div>
         <div style="height:6px;border-radius:3px;background:var(--track);margin:6px 0"><div style="height:100%;width:${(x.v / rank[0].v * 100).toFixed(1)}%;border-radius:3px;background:${colorOf(x.h)}"></div></div>
-        <div class="row small sub" style="justify-content:space-between"><span>${(x.v / aTotal * 100).toFixed(1)}%・${accLabel(x.h)}</span><span>${isAll ? `年平均 ${yen(x.v / Math.max(1, x.yrsHeld))}` : `${ay === CUR_Y ? '前年同期比' : '前年比'} ${fmtPct(x.chg)}`}</span></div>${!isAll && x.yoc != null ? `<div class="small sub" style="text-align:right">取得利回り ${x.yoc.toFixed(2)}%</div>` : ''}${isAll ? `<div class="small sub" style="text-align:right">${x.yrsHeld}年分の受取</div>` : ''}</div>
+        <div class="row small sub" style="justify-content:space-between"><span>${(x.v / rTotal * 100).toFixed(1)}%・${accLabel(x.h)}</span><span>${isAll ? `年平均 ${yen(x.v / Math.max(1, x.yrsHeld))}` : `${ay === CUR_Y ? '前年同期比' : '前年比'} ${fmtPct(x.chg)}`}</span></div>${!isAll && x.yoc != null ? `<div class="small sub" style="text-align:right">取得利回り ${x.yoc.toFixed(2)}%</div>` : ''}${isAll ? `<div class="small sub" style="text-align:right">${x.yrsHeld}年分の受取</div>` : ''}</div>
     </div>`).join('') : '<div class="empty">この年の受取記録はまだありません</div>'}
   </section>
   <section class="card">
@@ -1372,6 +1378,8 @@ document.addEventListener('change', (ev) => {
   }
   if (t.id === 'inputYear') { S.inputYear = +t.value; return render(); }
   if (t.id === 'anaYear') { S.anaYear = t.value === 'all' ? 'all' : +t.value; S.anaMonth = null; return render(); }
+  if (t.id === 'rankSp') { DB.ui.rankSp = t.checked; save(); return render(); }
+  if (t.id === 'donutSp') { DB.ui.donutSp = t.checked; save(); return render(); }
   if (t.id === 'yieldSp') { DB.ui.yieldSp = t.checked; save(); return render(); }
   if (t.id === 'homeSp' || t.id === 'anaSp' || t.id === 'inputSp') { DB.ui.includeSpecial = t.checked; save(); return render(); }
   if (t.id === 'showAll') { S.showAll = t.checked; return render(); }
