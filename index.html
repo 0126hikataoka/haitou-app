@@ -129,6 +129,7 @@ svg text{font-family:-apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif
 'use strict';
 /* ========== 定数・ユーティリティ ========== */
 const STORE_KEY = 'haitou-app-v1';
+const APP_VERSION = '1.26'; // 更新のたびに上げる（sw.js の VERSION もそろえる）
 const TYPES = ['投資信託', '国内株', '海外株'];
 const TAX = { jp: 20.315, foreign: 28.2835 }; // 海外: 1-(0.9×0.79685)
 const COLORS = ['#3FB68B', '#E0A458', '#5E8FD6', '#E3D27A', '#A98BD6', '#E07A8E', '#6FD0D8', '#C2C9CF'];
@@ -469,25 +470,58 @@ function monthBars(ys, inc) {
   return s + '</svg>';
 }
 function donut(parts, centerLabel, centerValue) {
+  const showPct = !!DB.ui.donutPct, showName = !!DB.ui.donutName, lab = showPct || showName;
   const total = parts.reduce((a, p) => a + p.v, 0);
-  const R = 70, r = 46, C = 90;
-  let s = `<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="銘柄別の比率">`;
-  if (total <= 0) { s += `<circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="var(--line2)" stroke-width="${R - r}"/>`; }
+  const R = 70, r = 46;
+  const W = lab ? 340 : 180, H = lab ? 236 : 180, CX = W / 2, CY = H / 2;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto" role="img" aria-label="銘柄別の比率">`;
+  const pt = (rad, a) => `${CX + rad * Math.cos(a)} ${CY + rad * Math.sin(a)}`;
+  const labels = [];
+  if (total <= 0) { s += `<circle cx="${CX}" cy="${CY}" r="${(R + r) / 2}" fill="none" stroke="var(--line2)" stroke-width="${R - r}"/>`; }
   else {
     let a0 = -Math.PI / 2;
     parts.forEach((p) => {
       if (p.v <= 0) return;
-      const a1 = a0 + (p.v / total) * Math.PI * 2;
-      if (p.v / total > 0.9999) { s += `<circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="${p.color}" stroke-width="${R - r}"/>`; return; }
-      const large = a1 - a0 > Math.PI ? 1 : 0;
-      const pt = (rad, a) => `${C + rad * Math.cos(a)} ${C + rad * Math.sin(a)}`;
-      s += `<path d="M ${pt(R, a0)} A ${R} ${R} 0 ${large} 1 ${pt(R, a1)} L ${pt(r, a1)} A ${r} ${r} 0 ${large} 0 ${pt(r, a0)} Z" fill="${p.color}" stroke="var(--card)" stroke-width="1.5"/>`;
+      const frac = p.v / total, a1 = a0 + frac * Math.PI * 2;
+      if (frac > 0.9999) s += `<circle cx="${CX}" cy="${CY}" r="${(R + r) / 2}" fill="none" stroke="${p.color}" stroke-width="${R - r}"/>`;
+      else {
+        const large = a1 - a0 > Math.PI ? 1 : 0;
+        s += `<path d="M ${pt(R, a0)} A ${R} ${R} 0 ${large} 1 ${pt(R, a1)} L ${pt(r, a1)} A ${r} ${r} 0 ${large} 0 ${pt(r, a0)} Z" fill="${p.color}" stroke="var(--card)" stroke-width="1.5"/>`;
+      }
+      if (lab && frac >= 0.02) { const am = (a0 + a1) / 2; labels.push({ p, frac, am, right: Math.cos(am) >= 0, y: CY + (R + 16) * Math.sin(am) }); }
       a0 = a1;
     });
   }
-  s += `<text x="${C}" y="${C - 4}" text-anchor="middle" font-size="11" fill="var(--sub)">${centerLabel}</text>`;
-  s += `<text x="${C}" y="${C + 16}" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ink)">${centerValue}</text>`;
-  return s + '</svg>';
+  if (labels.length) {
+    const gap = showPct && showName ? 25 : 14;
+    const cut = (t) => (t.length > 6 ? t.slice(0, 6) + '…' : t);
+    [true, false].forEach((side) => {
+      const L = labels.filter((l) => l.right === side).sort((a, b) => a.y - b.y);
+      L.forEach((l, i) => { const minY = i ? L[i - 1].ly + gap : 14; l.ly = Math.max(l.y, minY); });
+      for (let i = L.length - 1; i >= 0; i--) { const maxY = i === L.length - 1 ? H - (showPct && showName ? 16 : 6) : L[i + 1].ly - gap; const l = L[i]; l.ly = Math.min(l.ly, maxY); }
+      L.forEach((l) => {
+        const ex = CX + (R + 6) * Math.cos(l.am), ey = CY + (R + 6) * Math.sin(l.am);
+        const hx = CX + (side ? 1 : -1) * (R + 22);
+        s += `<polyline points="${ex},${ey} ${CX + (R + 14) * Math.cos(l.am)},${l.ly} ${hx},${l.ly}" fill="none" stroke="${l.p.color}" stroke-width="1"/>`;
+        const tx = hx + (side ? 3 : -3), anchor = side ? 'start' : 'end';
+        if (showName && showPct) {
+          s += `<text x="${tx}" y="${l.ly - 2}" text-anchor="${anchor}" font-size="10" fill="var(--sub)">${esc(cut(l.p.name || ''))}</text>`;
+          s += `<text x="${tx}" y="${l.ly + 11}" text-anchor="${anchor}" font-size="11" font-weight="700" fill="var(--ink)">${(l.frac * 100).toFixed(1)}%</text>`;
+        } else {
+          s += `<text x="${tx}" y="${l.ly + 4}" text-anchor="${anchor}" font-size="${showPct ? 11 : 10}" font-weight="${showPct ? 700 : 400}" fill="${showPct ? 'var(--ink)' : 'var(--sub)'}">${showPct ? (l.frac * 100).toFixed(1) + '%' : esc(cut(l.p.name || ''))}</text>`;
+        }
+      });
+    });
+  }
+  s += `<text x="${CX}" y="${CY - 4}" text-anchor="middle" font-size="11" fill="var(--sub)">${centerLabel}</text>`;
+  s += `<text x="${CX}" y="${CY + 16}" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ink)">${centerValue}</text>`;
+  s += '</svg>';
+  return s;
+}
+/** 円グラフの表示切替（カード右上に置く） */
+function donutToggles() {
+  const pill = (k, l, a, on) => `<button type="button" class="chip" data-donut="${k}" aria-pressed="${on}" aria-label="${a}" style="height:30px;padding:0 10px;font-size:12px">${l}</button>`;
+  return `<div class="row" role="group" aria-label="円グラフの表示" style="gap:6px;flex:none">${pill('pct', '％', '円グラフに％を表示', !!DB.ui.donutPct)}${pill('name', '銘柄名', '円グラフに銘柄名を表示', !!DB.ui.donutName)}</div>`;
 }
 /* ========== 画面: ホーム ========== */
 function renderHome() {
@@ -499,7 +533,7 @@ function renderHome() {
   const total = parts.reduce((a, p) => a + p.v, 0);
   const isCur = S.year === CUR_Y, isPast = S.year < CUR_Y;
   return `
-  <div class="hdr"><h1>配当</h1><div class="row">${yearSelect('homeYear', S.year, yearsAvailable())}<button class="icon-btn" id="openSettings" aria-label="設定">${ic('gear')}</button></div></div>
+  <div class="hdr"><div class="row" style="align-items:baseline;gap:6px;min-width:0"><h1 style="white-space:nowrap">配当管理</h1><span class="num small sub" style="white-space:nowrap">Ver ${APP_VERSION}</span></div><div class="row">${yearSelect('homeYear', S.year, yearsAvailable())}<button class="icon-btn" id="openSettings" aria-label="設定">${ic('gear')}</button></div></div>
   <section class="card summary">
     <div class="small" style="opacity:.85">${S.year}年の${ys.loan ? '手取り（ローン返済後・' : '受取額（'}税引後${isPast ? '' : '・見込み含む'}${inc ? '' : '・特別分配除く'}）</div>
     <div class="big num">${signedYen(ys.net)}</div>
@@ -518,8 +552,8 @@ function renderHome() {
     <div class="small sub">税引後・円${ys.loan ? '。ローン返済を引いた手取り額で表示' : ''}。バーをタップするとその月の入力画面へ。</div>
   </section>
   <section class="card">
-    <h2>銘柄別の比率</h2>
-    <div style="display:flex;justify-content:center">${donut(parts.map((p) => ({ v: p.v, color: p.color })), '年間合計', jpShort(total) + '円')}</div>
+    <div class="row" style="justify-content:space-between;margin-bottom:12px"><h2 style="margin:0">銘柄別の比率</h2>${donutToggles()}</div>
+    <div style="display:flex;justify-content:center">${donut(parts.map((p) => ({ v: p.v, color: p.color, name: p.h.name })), '年間合計', jpShort(total) + '円')}</div>
     <div style="margin-top:8px">${parts.length ? parts.map((p) => `
       <div class="list-row"><i class="sw" style="background:${p.color};width:12px;height:12px;margin:0"></i>
       <span class="grow ellipsis">${esc(p.h.name)}</span>
@@ -643,11 +677,12 @@ function renderInput() {
   <div class="row" style="justify-content:space-between;margin:0 4px 10px"><h2 style="margin:0;font-size:18px">${y}年${m}月</h2>
     <label class="row small sub"><input type="checkbox" id="showAll" ${S.showAll ? 'checked' : ''} style="width:18px;height:18px">予定外の銘柄も表示</label></div>
   ${cards || '<div class="card empty">この月に配当予定の銘柄はありません</div>'}
-  ${(() => { const lm = loanMonth(y, m), tot = monthNet + monthSp; return lm ? `<div class="card" style="padding:12px 16px">
+  ${list.some((h) => isFund(h)) || monthSp > 0 ? `<div class="card" style="padding:4px 16px">${specialSwitch('inputSp')}</div>` : ''}
+  ${(() => { const lm = loanMonth(y, m), tot = monthNet + (DB.ui.includeSpecial ? monthSp : 0); return lm ? `<div class="card" style="padding:12px 16px">
     <div class="row small" style="justify-content:space-between;min-height:26px"><span class="sub">配当の合計（税引後）</span><span class="num">${yen(tot)}</span></div>
     <div class="row small" style="justify-content:space-between;min-height:26px"><span class="sub">証券担保ローン返済</span><span class="num down">−${yen(lm)}</span></div></div>
   <div class="total-bar"><span>${m}月の手取り</span><span class="num ${tot - lm < 0 ? 'down' : ''}" style="font-weight:700;font-size:20px">${signedYen(tot - lm)}</span></div>` : `<div class="total-bar"><span>${m}月の合計（税引後）</span><span class="num" style="font-weight:700;font-size:20px">${yen(tot)}</span></div>`; })()}
-  ${monthSp > 0 ? `<div class="hint">うち特別分配 ${yen(monthSp)}</div>` : ''}`;
+  ${monthSp > 0 ? `<div class="hint">${DB.ui.includeSpecial ? `うち特別分配 ${yen(monthSp)}` : `特別分配 ${yen(monthSp)} は合計に含めていません`}</div>` : ''}`;
 }
 
 /* ========== 画面: 分析（実際に受け取った金額のみ・税引後） ========== */
@@ -849,6 +884,33 @@ function renderAnalysis() {
     <tbody>${rows.slice().reverse().map((r) => `<tr data-anayear="${r.y}" style="cursor:pointer;${r.y === ay ? 'background:var(--acc-soft)' : ''}"><td class="num" style="font-weight:600"><button type="button" data-anayear="${r.y}" style="border:0;background:transparent;padding:0;font-weight:700;color:${r.y === ay ? 'var(--acc-soft-ink)' : 'var(--ink)'};text-decoration:underline;text-underline-offset:3px">${r.y}${r.y === CUR_Y ? '*' : ''}</button></td><td>${jpShort(r.ord)}</td><td style="color:var(--sp-ink)">${r.sp ? jpShort(r.sp) : '—'}</td>${anyLoan ? `<td class="down">${r.loan ? '−' + jpShort(r.loan) : '—'}</td>` : ''}<td style="font-weight:700" class="${r.total < 0 ? 'down' : ''}">${signed(r.total)}</td><td>${r.y === CUR_Y ? `<span class="small sub">同期</span> ${fmtPct(ytdCmp)}` : fmtPct(r.yoy)}</td></tr>`).join('')}</tbody></table>
     <div class="hint" style="padding-bottom:6px">記入済みの受取額だけを集計（税引後・千・万表記）。${anyLoan ? '手取り＝配当（特別分配はスイッチに従う）−経過した月の証券担保ローン返済。' : ''}${CUR_Y}年の前年比は前年の同じ期間と比較。</div>
   </section>
+  ${(() => {
+    // 銘柄ごとの実績利回り：直近12か月に受け取った額（税引後）÷ 取得額
+    const ysp = !!DB.ui.yieldSp;
+    const win = []; for (let k = 1; k <= 12; k++) { let y = CUR_Y, m = CUR_M - k; if (m <= 0) { m += 12; y -= 1; } win.push([y, m]); }
+    const items = DB.holdings.filter((h) => !isSold(h) && units(h) * (num(h.cost) || 0) > 0).map((h) => {
+      let ord = 0, sp = 0, months = 0;
+      win.forEach(([y, m]) => { const a = actualCell(y, h, m); if (a) { ord += a.ord; sp += a.sp; } if (held(h, y, m)) months++; });
+      const cost = units(h) * num(h.cost);
+      const got = ord + (isFund(h) && ysp ? sp : 0);
+      return { h, ord, sp, got, cost, months, y: got / cost * 100 };
+    }).sort((a, b) => b.y - a.y);
+    if (!items.length) return '';
+    const maxY = Math.max(0.01, ...items.map((x) => x.y));
+    const hasFund = items.some((x) => isFund(x.h));
+    return `<section class="card">
+      <h2>銘柄ごとの実績利回り</h2>
+      <div class="small sub" style="margin:-6px 0 8px">直近12か月（${win[11][0]}年${win[11][1]}月〜${win[0][0]}年${win[0][1]}月）に受け取った額（税引後）÷ 取得額</div>
+      ${hasFund ? `<label class="switch"><span class="small">投資信託の特別分配（元本払戻金）を含む</span><input type="checkbox" id="yieldSp" ${ysp ? 'checked' : ''}></label>` : ''}
+      ${items.map((x) => `<div style="padding:10px 0;border-top:1px solid var(--line)">
+        <div class="row"><i class="sw" style="background:${colorOf(x.h)};margin:0"></i><span class="grow ellipsis" style="font-weight:600">${esc(x.h.name)}</span><span class="num" style="font-weight:700;font-size:16px;color:var(--acc)">${x.y.toFixed(2)}%</span></div>
+        <div style="height:6px;border-radius:3px;background:var(--track);margin:6px 0"><div style="height:100%;width:${Math.max(0, x.y / maxY * 100).toFixed(1)}%;border-radius:3px;background:${colorOf(x.h)}"></div></div>
+        <div class="row small sub" style="justify-content:space-between;flex-wrap:wrap;gap:2px 8px"><span class="num">受取 ${yen(x.got)} / 取得額 ${yen(x.cost)}</span><span>${x.h.type}・${accLabel(x.h)}</span></div>
+        ${isFund(x.h) && x.sp > 0 ? `<div class="small" style="color:var(--sp-ink);margin-top:2px">特別分配 ${yen(x.sp)}（${ysp ? '含む' : '含まない'}）${ysp ? '' : `・含めると ${((x.ord + x.sp) / x.cost * 100).toFixed(2)}%`}</div>` : ''}
+        ${x.months < 12 ? `<div class="small sub" style="margin-top:2px">保有${x.months}か月分の実績のため、1年分より低く出ます</div>` : ''}
+      </div>`).join('')}
+    </section>`;
+  })()}
   <div class="row" id="anaDetail" style="justify-content:space-between;margin:18px 4px 10px;scroll-margin-top:12px"><h2 style="margin:0;font-size:16px">詳細</h2><select class="pill num" id="anaYear" aria-label="期間を選択"><option value="all" ${isAll ? 'selected' : ''}>全期間</option>${years.slice().reverse().map((y) => `<option value="${y}" ${y === ay ? 'selected' : ''}>${y}年</option>`).join('')}</select></div>
   <section class="card">
     <div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">${isAll ? `全期間の月別受取額<span class="small sub" style="font-weight:400">（${years[0]}〜${years[years.length - 1]}年の合計）</span>` : label + 'の月別受取額'}</h2><span class="num ${A.total < 0 ? 'down' : ''}" style="font-weight:700">${signedYen(A.total)}</span></div>
@@ -872,7 +934,8 @@ function renderAnalysis() {
     ${compareBars(A, P)}
   </section>`}
   <section class="card">
-    <h2>銘柄別の受取額（${label}）</h2>${anyLoan ? '<div class="small sub" style="margin:-8px 0 6px">配当のみ（ローン返済前）</div>' : ''}
+    <div class="row" style="justify-content:space-between;margin-bottom:12px;gap:8px"><h2 style="margin:0;min-width:0">銘柄別の受取額<span style="white-space:nowrap">（${label}）</span></h2>${rank.length ? donutToggles() : ''}</div>${anyLoan ? '<div class="small sub" style="margin:-8px 0 6px">配当のみ（ローン返済前）</div>' : ''}
+    ${rank.length ? `<div style="display:flex;justify-content:center;margin:4px 0 8px">${donut(rank.map((x) => ({ v: x.v, color: colorOf(x.h), name: x.h.name })), isAll ? '全期間の合計' : label + 'の合計', jpShort(aTotal) + '円')}</div>` : ''}
     ${rank.length ? rank.map((x, i) => `<div class="list-row" style="align-items:flex-start">
       <span class="num sub" style="width:18px;padding-top:2px">${i + 1}</span>
       <div class="grow"><div class="row"><i class="sw" style="background:${colorOf(x.h)};margin:0"></i><span class="grow ellipsis" style="font-weight:600">${esc(x.h.name)}</span><span class="num" style="font-weight:700">${yen(x.v)}</span></div>
@@ -1117,6 +1180,7 @@ document.addEventListener('click', (ev) => {
   }
   if (ds.anamonth) { S.anaMonth = S.anaMonth === +ds.anamonth ? null : +ds.anamonth; return render(); }
   if (ds.goinput) { S.inputYear = CUR_Y; S.inputMonth = +ds.goinput; return go('input'); }
+  if (ds.donut) { const k = ds.donut === 'pct' ? 'donutPct' : 'donutName'; DB.ui[k] = !DB.ui[k]; save(); return render(); }
   if (ds.filter) { S.filter = ds.filter; return render(); }
   if (t.id === 'addHolding') return openEditor(null);
   if (ds.edit) return openEditor(ds.edit);
@@ -1308,7 +1372,8 @@ document.addEventListener('change', (ev) => {
   }
   if (t.id === 'inputYear') { S.inputYear = +t.value; return render(); }
   if (t.id === 'anaYear') { S.anaYear = t.value === 'all' ? 'all' : +t.value; S.anaMonth = null; return render(); }
-  if (t.id === 'homeSp' || t.id === 'anaSp') { DB.ui.includeSpecial = t.checked; save(); return render(); }
+  if (t.id === 'yieldSp') { DB.ui.yieldSp = t.checked; save(); return render(); }
+  if (t.id === 'homeSp' || t.id === 'anaSp' || t.id === 'inputSp') { DB.ui.includeSpecial = t.checked; save(); return render(); }
   if (t.id === 'showAll') { S.showAll = t.checked; return render(); }
   if (t.dataset.rec) {
     const hid = t.closest('[data-hid]').dataset.hid;
